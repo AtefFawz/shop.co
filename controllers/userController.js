@@ -18,7 +18,7 @@ const signUp = Meddle(async (req, res, next) => {
   }
 
   // Normalize email to ensure consistency
-  email = validator.normalizeEmail(email) || email;
+  // email = validator.normalizeEmail(email) || email;
 
   // Validate password strength
   const isStrong = validator.isStrongPassword(password);
@@ -89,7 +89,7 @@ const signIn = Meddle(async (req, res, next) => {
   }
 
   // Normalize email to ensure consistency
-  email = validator.normalizeEmail(email) || email;
+  // email = validator.normalizeEmail(email) || email;
 
   // 2. Check if user exists
   const user = await User.findOne({ email }).select("+password");
