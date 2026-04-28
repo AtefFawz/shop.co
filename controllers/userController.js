@@ -53,7 +53,9 @@ const signUp = Meddle(async (req, res, next) => {
   const hash = await bcrypt.hash(password, 10);
 
   // Handle avatar upload, if provided. If no file is uploaded, use a default avatar.
-  const avatarName = req.file ? req.file.filename : "default-avatar.png";
+  const avatarName = req.file
+    ? req.file.path
+    : "'https://bit.ly/default-avatar'"; // Default avatar URL (you can change this to your own default image)
 
   //  New user
   const newUser = new User({
@@ -85,6 +87,9 @@ const signIn = Meddle(async (req, res, next) => {
   if (!email || !password) {
     return next(appError.create("Email and password are required", Fail, 400));
   }
+
+  // Normalize email to ensure consistency
+  email = validator.normalizeEmail(email) || email;
 
   // 2. Check if user exists
   const user = await User.findOne({ email }).select("+password");

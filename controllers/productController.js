@@ -53,7 +53,7 @@ const getProduct = Meddle(async (req, res, next) => {
 
 const addProduct = Meddle(async (req, res) => {
   const add = await productSchema.create(req.body);
-  add.photo = req.file.filename;
+  add.photo = req.file.path;
   await add.save();
   res.status(201).json({ status: Success, data: { Product: add } });
 });
