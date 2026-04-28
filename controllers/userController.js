@@ -55,7 +55,7 @@ const signUp = Meddle(async (req, res, next) => {
   // Handle avatar upload, if provided. If no file is uploaded, use a default avatar.
   const avatarName = req.file
     ? req.file.path
-    : "'https://bit.ly/default-avatar'"; // Default avatar URL (you can change this to your own default image)
+    : "https://res.cloudinary.com/dudit0nty/image/upload/q_auto/f_auto/v1777336486/shop-co-uploads/cwmwfgwrwxxqlk65grw4.png"; // Default avatar URL (you can change this to your own default image)
 
   //  New user
   const newUser = new User({

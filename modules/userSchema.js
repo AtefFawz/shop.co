@@ -31,6 +31,8 @@ const userSchema = new mongoose.Schema(
     },
     avatar: {
       type: String,
+      default:
+        "https://res.cloudinary.com/dudit0nty/image/upload/q_auto/f_auto/v1777336486/shop-co-uploads/cwmwfgwrwxxqlk65grw4.png",
     },
   },
   {
