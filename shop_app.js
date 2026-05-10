@@ -29,7 +29,7 @@ const { Error } = require("./utils/httpText");
 
 // Routes
 app.use("/api/product", productRoutes);
-app.use("/api/user", userRouts);
+app.use("/api/auth", userRouts);
 app.use("/api/order", orderRouter);
 app.use("/api/admin", adminRoute);
 app.use("/api/review", reviewsRouter);
@@ -46,8 +46,8 @@ app.use((err, req, res, next) => {
     code: statusCode,
   });
 });
-// app.listen(process.env.PORT, () => {
-//   console.log(`Server is running on port ${process.env.PORT}`);
+// app.listen(process.env.PORT || 5000, () => {
+//   console.log(`Server is running on port ${process.env.PORT || 5000}`);
 // });
 
 module.exports = app;

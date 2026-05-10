@@ -123,30 +123,7 @@ const signIn = Meddle(async (req, res, next) => {
   });
 });
 
-const users = Meddle(async (req, res, next) => {
-  // بنجيب كل اليوزرز بس بنخفي الـ Password للأمان
-  const allUsers = await User.find({}, "-password").sort({ createdAt: -1 });
-
-  if (!allUsers) {
-    return next(appError.create("Failed to retrieve users", Fail, 500));
-  }
-  console.log(allUsers);
-
-  if (allUsers.length === 0) {
-    return res.status(200).json({
-      status: Success,
-      message: "No users found",
-      data: { users: [] },
-    });
-  }
-
-  res.status(200).json({
-    status: "Success",
-    data: { users: allUsers },
-  });
-});
 module.exports = {
   signUp,
   signIn,
-  users,
 };

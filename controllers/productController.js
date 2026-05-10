@@ -39,8 +39,6 @@ const getProduct = Meddle(async (req, res, next) => {
       },
     });
 
-  console.log("Product found with reviews:", productFound);
-
   if (!productFound) {
     return next(appError.create("This product was not found", "Fail", 404));
   }

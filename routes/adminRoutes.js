@@ -4,7 +4,9 @@ const { getAdminStats } = require("../controllers/adminController");
 const allowedRoles = require("../middlewares/allowedRoles");
 const verifyToken = require("../middlewares/verifyToken");
 const { ADMIN, MANGER } = require("../utils/role");
-// adminRoute.use(verifyToken, allowedRoles(ADMIN, MANGER));
+const { users, UpdateUserRole } = require("../controllers/adminController");
+adminRoute.use(verifyToken, allowedRoles(ADMIN, MANGER));
 adminRoute.get("/stats", getAdminStats);
-
+adminRoute.get("/users", allowedRoles(ADMIN), users);
+adminRoute.patch("/user/update/:userId", allowedRoles(ADMIN), UpdateUserRole);
 module.exports = { adminRoute };
