@@ -99,9 +99,9 @@ const getOrders = Meddle(async (req, res, next) => {
 // Delete Order
 const deleteOrder = Meddle(async (req, res, next) => {
   const { id } = req.params;
-  console.log("Deleting order with ID:", id);
+
   const deletedOrder = await Order.findByIdAndDelete(id);
-  console.log("Deleted order:", deletedOrder);
+
   if (!deletedOrder) {
     return next(appError.create("Order not found", Fail, 404));
   }

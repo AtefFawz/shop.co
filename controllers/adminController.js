@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const User = require("../modules/userSchema");
 const Product = require("../modules/productSchema");
 const Order = require("../modules/orderSchema");
@@ -54,6 +55,71 @@ const users = Meddle(async (req, res, next) => {
   });
 });
 
+// Get User Details for Admin
+
+const getUser = Meddle(async (req, res, next) => {
+  const { userId } = req.params; // Destructuring userId from req.params
+
+  // 1. Validate userId format
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    return next(appError.create("Invalid user ID format", Fail, 400));
+  }
+
+  // 2. get user details along with their orders and reviews (if any)
+  const user = await User.findById(userId, "-password")
+    .populate({
+      path: "orders",
+      select: "totalPrice status createdAt", // get only essential order fields
+      options: { sort: { createdAt: -1 } }, // sort orders by most recent
+    })
+    .populate({
+      path: "reviews",
+      select: "rating comment product",
+      populate: { path: "product", select: "name" },
+    });
+
+  if (!user) {
+    return next(
+      appError.create(
+        "User found but account might be deactivated or deleted",
+        Fail,
+        404,
+      ),
+    );
+  }
+
+  // 3. Adding memberSince field based on ObjectId timestamp
+  const userData = user.toObject();
+  userData.memberSince = user._id.getTimestamp();
+
+  res.status(200).json({
+    status: "Success",
+    data: { user: userData },
+  });
+});
+
+// Delete User (Admin Only) - Optional, not implemented in routes yet
+
+const deleteUser = Meddle(async (req, res, next) => {
+  const { userId } = req.params;
+
+  // Validate userId format
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    return next(appError.create("Invalid user ID format", Fail, 400));
+  }
+
+  const deletedUser = await User.findByIdAndDelete(userId);
+
+  if (!deletedUser) {
+    return next(appError.create("User not found", Fail, 404));
+  }
+
+  res.status(200).json({
+    status: "Success",
+    message: "User deleted successfully",
+  });
+});
+
 // Update User Role (MANAGER Only)
 const UpdateUserRole = Meddle(async (req, res, next) => {
   const userId = req.params.userId;
@@ -104,4 +170,4 @@ const UpdateUserRole = Meddle(async (req, res, next) => {
   });
 });
 
-module.exports = { getAdminStats, users, UpdateUserRole };
+module.exports = { getAdminStats, users, UpdateUserRole, getUser, deleteUser };
