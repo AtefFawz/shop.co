@@ -5,7 +5,7 @@ const Order = require("../modules/orderSchema");
 const Meddle = require("../middlewares/meddle");
 const appError = require("../utils/appError");
 const { Fail } = require("../utils/httpText");
-const { USER, MANGER, ADMIN } = require("../utils/role");
+const { USER, MANAGER, ADMIN } = require("../utils/role");
 
 const getAdminStats = Meddle(async (req, res, next) => {
   const [userCount, productCount, orderCount, revenueData] = await Promise.all([
@@ -151,7 +151,7 @@ const UpdateUserRole = Meddle(async (req, res, next) => {
   }
 
   //  Validate role value
-  const allowedRoles = [ADMIN, MANGER, USER];
+  const allowedRoles = [ADMIN, MANAGER, USER];
   if (!role || !allowedRoles.includes(role)) {
     return next(appError.create("Invalid role value", Fail, 400));
   }

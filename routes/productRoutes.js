@@ -1,6 +1,6 @@
 const express = require("express");
 const verifyToken = require("../middlewares/verifyToken");
-const { USER, ADMIN, MANGER } = require("../utils/role");
+const { USER, ADMIN, MANAGER } = require("../utils/role");
 const allowedRoles = require("../middlewares/allowedRoles");
 const {
   deleteProduct,
@@ -19,7 +19,7 @@ productRoutes
   .get(verifyToken, getAllProducts)
   .post(
     verifyToken,
-    allowedRoles(ADMIN, MANGER),
+    allowedRoles(ADMIN, MANAGER),
     upload.single("photo"),
     addProduct,
   );
@@ -29,10 +29,10 @@ productRoutes
   .get(verifyToken, getProduct)
   .patch(
     verifyToken,
-    allowedRoles(ADMIN, MANGER),
+    allowedRoles(ADMIN, MANAGER),
     upload.single("photo"),
     updateProduct,
   )
-  .delete(verifyToken, allowedRoles(MANGER, ADMIN), deleteProduct);
+  .delete(verifyToken, allowedRoles(MANAGER, ADMIN), deleteProduct);
 
 module.exports = { productRoutes };
