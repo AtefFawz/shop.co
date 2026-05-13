@@ -12,10 +12,10 @@ const {
 } = require("../controllers/adminController");
 adminRoute.use(verifyToken, allowedRoles(ADMIN, MANGER));
 adminRoute.get("/stats", getAdminStats);
-adminRoute.get("/users", allowedRoles(ADMIN), users);
+adminRoute.get("/users", users);
 adminRoute
   .route("/users/:userId")
-  .get(allowedRoles(ADMIN), getUser)
+  .get(getUser)
   .delete(allowedRoles(ADMIN), deleteUser)
   .patch(allowedRoles(ADMIN), UpdateUserRole);
 
