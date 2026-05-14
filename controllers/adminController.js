@@ -39,11 +39,10 @@ const users = Meddle(async (req, res, next) => {
   if (!allUsers) {
     return next(appError.create("Failed to retrieve users", Fail, 500));
   }
-  console.log(allUsers);
 
   if (allUsers.length === 0) {
     return res.status(200).json({
-      status: Success,
+      status: "Success",
       message: "No users found",
       data: { users: [] },
     });
