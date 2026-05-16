@@ -1,10 +1,12 @@
 require("dotenv").config();
 const express = require("express");
+const cookieParser = require("cookie-parser");
 const cors = require("cors");
 const connectDB = require("./config/db");
 
 const app = express();
 
+// Database Connection Middleware
 app.use(async (req, res, next) => {
   try {
     await connectDB();
@@ -16,8 +18,15 @@ app.use(async (req, res, next) => {
   }
 });
 
+// Middle wares
 app.use(express.json());
-app.use(cors());
+app.use(
+  cors({
+    origin: "http://localhost:3000",
+    credentials: true,
+  }),
+);
+app.use(cookieParser());
 
 const { productRoutes } = require("./routes/productRoutes");
 const { userRouts } = require("./routes/userRouts");
@@ -46,8 +55,8 @@ app.use((err, req, res, next) => {
     code: statusCode,
   });
 });
-// app.listen(process.env.PORT || 5000, () => {
-//   console.log(`Server is running on port ${process.env.PORT || 5000}`);
-// });
+app.listen(process.env.PORT || 5000, () => {
+  console.log(`Server is running on port ${process.env.PORT || 5000}`);
+});
 
 module.exports = app;

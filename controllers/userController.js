@@ -7,76 +7,81 @@ const Meddle = require("../middlewares/meddle");
 const appError = require("../utils/appError");
 const { USER } = require("../utils/role");
 
+const generateTokens = (user) => {
+  const accessToken = jwt.sign(
+    { email: user.email, id: user._id, role: user.role },
+    process.env.SECRET_KEY,
+    { expiresIn: "30s" },
+  );
+
+  const refreshToken = jwt.sign(
+    { email: user.email, id: user._id, role: user.role },
+    process.env.SECRET_KEY,
+    { expiresIn: "7d" },
+  );
+
+  return { accessToken, refreshToken };
+};
+
 // Sign Up Process
 const signUp = Meddle(async (req, res, next) => {
-  // Extract user from Request
   let { fullName, email, password, role } = req.body;
 
-  // Validate input
+  // 1. Validation
   if (!fullName || !email || !password) {
     return next(appError.create("All fields are required", Fail, 400));
   }
 
-  // Normalize email to ensure consistency
-  // email = validator.normalizeEmail(email) || email;
-
-  // Validate password strength
-  const isStrong = validator.isStrongPassword(password);
-  if (!isStrong) {
-    return next(
-      appError.create(
-        "Password must be at least 8 characters and include upper, lower, numbers, and symbols.",
-        Fail,
-        400,
-      ),
-    );
+  if (!validator.isStrongPassword(password)) {
+    return next(appError.create("Password is too weak.", Fail, 400));
   }
 
-  const score = validator.isStrongPassword(password, { returnScore: true });
-  console.log("Password strength score:", score);
-
-  // Step 1: Find In Data base
-  let FindUser = await User.findOne({ email: email });
-
-  //step 2- Check if the data exists in the database before saving
-  if (FindUser) {
-    return next(
-      appError.create(
-        "This email is unavailable for registration. If you own this account, please try logging in.",
-        Fail,
-        400,
-      ),
-    );
+  // 2. Check Duplicate
+  const existingUser = await User.findOne({ email });
+  if (existingUser) {
+    return next(appError.create("Email already registered.", Fail, 400));
   }
 
-  // Step 3: Hash password before storing in the database
+  // 3. Hash & Avatar
   const hash = await bcrypt.hash(password, 10);
+  const avatarName =
+    req.file?.path || "https://res.cloudinary.com/.../default.png";
 
-  // Handle avatar upload, if provided. If no file is uploaded, use a default avatar.
-  const avatarName = req.file
-    ? req.file.path
-    : "https://res.cloudinary.com/dudit0nty/image/upload/q_auto/f_auto/v1777336486/shop-co-uploads/cwmwfgwrwxxqlk65grw4.png"; // Default avatar URL (you can change this to your own default image)
-
-  //  New user
+  // 4. Create & Save
   const newUser = new User({
     fullName,
     email,
     password: hash,
-    role: role || USER,
+    role: USER,
     avatar: avatarName,
   });
-
-  //Step 4: Save user to the DB
   await newUser.save();
 
-  // Token JWT
-  const token = jwt.sign(
-    { email: newUser.email, id: newUser._id, role: newUser.role },
-    process.env.SECRET_KEY,
-    { expiresIn: "60m" },
-  );
+  // 5. Tokens Management
+  const { accessToken, refreshToken } = generateTokens(newUser);
 
-  res.status(201).json({ status: Success, data: { user: newUser, token } });
+  // Set Refresh Token in Secure Cookie
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "None",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+
+  // 6. Response
+  res.status(201).json({
+    status: Success,
+    data: {
+      token: accessToken,
+      user: {
+        id: newUser._id,
+        fullName: newUser.fullName,
+        email: newUser.email,
+        role: newUser.role,
+        avatar: newUser.avatar,
+      },
+    },
+  });
 });
 
 // Sign In Process
@@ -87,9 +92,6 @@ const signIn = Meddle(async (req, res, next) => {
   if (!email || !password) {
     return next(appError.create("Email and password are required", Fail, 400));
   }
-
-  // Normalize email to ensure consistency
-  // email = validator.normalizeEmail(email) || email;
 
   // 2. Check if user exists
   const user = await User.findOne({ email }).select("+password");
@@ -103,27 +105,66 @@ const signIn = Meddle(async (req, res, next) => {
     return next(appError.create("Invalid email or password", Fail, 401));
   }
 
-  // 4. Generate JWT Token
-  const token = jwt.sign(
-    { email: user.email, id: user._id, role: user.role },
-    process.env.SECRET_KEY,
-    { expiresIn: "60m" },
-  );
+  // 4. Generate JWT Tokens
+  const { accessToken, refreshToken } = generateTokens(user);
+
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "None",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
 
   res.status(200).json({
     status: Success,
     data: {
-      token,
+      token: accessToken,
       user: {
         fullName: user.fullName,
-        role: user.role || USER,
+        role: user.role,
         avatar: user.avatar,
       },
     },
   });
 });
 
+// Refresh Token Process
+const refreshToken = Meddle(async (req, res, next) => {
+  const token = req.cookies.refreshToken;
+
+  if (!token) {
+    return next(appError.create("No refresh token provided", Fail, 401));
+  }
+
+  // Verify the refresh token
+  jwt.verify(token, process.env.SECRET_KEY, (err, decoded) => {
+    if (err) {
+      return next(appError.create("Invalid refresh token", Fail, 401));
+    }
+
+    const newToken = jwt.sign(
+      { email: decoded.email, id: decoded.id, role: decoded.role },
+      process.env.SECRET_KEY,
+      { expiresIn: "15m" },
+    );
+
+    res.status(200).json({ status: Success, data: { token: newToken } });
+  });
+});
+
+// Logout Process
+const logout = Meddle(async (req, res, next) => {
+  res.clearCookie("refreshToken", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "None",
+  });
+  res.status(200).json({ status: Success, message: "Logged out successfully" });
+});
+
 module.exports = {
   signUp,
   signIn,
+  refreshToken,
+  logout,
 };
