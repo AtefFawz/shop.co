@@ -11,7 +11,7 @@ const generateTokens = (user) => {
   const accessToken = jwt.sign(
     { email: user.email, id: user._id, role: user.role },
     process.env.SECRET_KEY,
-    { expiresIn: "1m" },
+    { expiresIn: "5m" },
   );
 
   const refreshToken = jwt.sign(
@@ -145,7 +145,7 @@ const refreshToken = Meddle(async (req, res, next) => {
     const newToken = jwt.sign(
       { email: decoded.email, id: decoded.id, role: decoded.role },
       process.env.SECRET_KEY,
-      { expiresIn: "1m" },
+      { expiresIn: "5m" },
     );
 
     res.status(200).json({ status: Success, data: { token: newToken } });
