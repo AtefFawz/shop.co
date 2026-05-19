@@ -11,7 +11,7 @@ const generateTokens = (user) => {
   const accessToken = jwt.sign(
     { email: user.email, id: user._id, role: user.role },
     process.env.SECRET_KEY,
-    { expiresIn: "5m" },
+    { expiresIn: "1m" },
   );
 
   const refreshToken = jwt.sign(
@@ -136,35 +136,20 @@ const refreshToken = Meddle(async (req, res, next) => {
     return next(appError.create("No refresh token provided", Fail, 401));
   }
 
-  try {
-    const decoded = jwt.verify(token, process.env.REFRESH_TOKEN_SECRET);
-
-    const user = await User.findById(decoded.id);
-
-    if (!user) {
-      return next(appError.create("User no longer exists", Fail, 401));
+  // Verify the refresh token
+  jwt.verify(token, process.env.SECRET_KEY, (err, decoded) => {
+    if (err) {
+      return next(appError.create("Invalid refresh token", Fail, 401));
     }
 
-    // Generate NEW TOKENS
-    const { accessToken, refreshToken } = generateTokens(user);
+    const newToken = jwt.sign(
+      { email: decoded.email, id: decoded.id, role: decoded.role },
+      process.env.SECRET_KEY,
+      { expiresIn: "1m" },
+    );
 
-    // Rotate Refresh Token
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
-
-    return res.status(200).json({
-      status: Success,
-      data: {
-        token: accessToken,
-      },
-    });
-  } catch (err) {
-    return next(appError.create("Invalid refresh token", Fail, 401));
-  }
+    res.status(200).json({ status: Success, data: { token: newToken } });
+  });
 });
 
 // Logout Process
