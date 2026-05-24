@@ -145,7 +145,7 @@ const refreshToken = Meddle(async (req, res, next) => {
     const newToken = jwt.sign(
       { email: decoded.email, id: decoded.id, role: decoded.role },
       process.env.SECRET_KEY,
-      { expiresIn: "1m" },
+      { expiresIn: "7d" },
     );
 
     res.status(200).json({ status: Success, data: { token: newToken } });
