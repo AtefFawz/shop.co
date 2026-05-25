@@ -60,11 +60,12 @@ const signUp = Meddle(async (req, res, next) => {
   // 5. Tokens Management
   const { accessToken, refreshToken } = generateTokens(newUser);
 
-  // Set Refresh Token in Secure Cookie
+  const isProduction = process.env.NODE_ENV === "production";
+
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "None",
+    secure: isProduction,
+    sameSite: isProduction ? "None" : "Lax",
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 
@@ -108,10 +109,12 @@ const signIn = Meddle(async (req, res, next) => {
   // 4. Generate JWT Tokens
   const { accessToken, refreshToken } = generateTokens(user);
 
+  const isProduction = process.env.NODE_ENV === "production";
+
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "None",
+    secure: isProduction,
+    sameSite: isProduction ? "None" : "Lax",
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 
@@ -145,7 +148,7 @@ const refreshToken = Meddle(async (req, res, next) => {
     const newToken = jwt.sign(
       { email: decoded.email, id: decoded.id, role: decoded.role },
       process.env.SECRET_KEY,
-      { expiresIn: "7d" },
+      { expiresIn: "1m" },
     );
 
     res.status(200).json({ status: Success, data: { token: newToken } });
@@ -154,10 +157,13 @@ const refreshToken = Meddle(async (req, res, next) => {
 
 // Logout Process
 const logout = Meddle(async (req, res, next) => {
+  const isProduction = process.env.NODE_ENV === "production";
+
   res.clearCookie("refreshToken", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "None",
+    secure: isProduction,
+    sameSite: isProduction ? "None" : "Lax",
+    path: "/",
   });
   res.status(200).json({ status: Success, message: "Logged out successfully" });
 });
