@@ -66,7 +66,8 @@ const signUp = Meddle(async (req, res, next) => {
     httpOnly: true,
     secure: isProduction,
     sameSite: isProduction ? "None" : "Lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
+    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    path: "/",
   });
 
   // 6. Response
@@ -115,7 +116,8 @@ const signIn = Meddle(async (req, res, next) => {
     httpOnly: true,
     secure: isProduction,
     sameSite: isProduction ? "None" : "Lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
+    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    path: "/",
   });
 
   res.status(200).json({
