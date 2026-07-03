@@ -23,7 +23,9 @@ app.use(express.json());
 const allowedOrigins = [
   "http://localhost:3000",
   "https://shop-co-vgr2.vercel.app",
+  "https://shop-co-eta-henna.vercel.app",
 ];
+
 app.use(
   cors({
     origin: function (origin, callback) {
@@ -66,8 +68,8 @@ app.use((err, req, res, next) => {
     code: statusCode,
   });
 });
-// app.listen(process.env.PORT || 5000, () => {
-//   console.log(`Server is running on port ${process.env.PORT || 5000}`);
-// });
+app.listen(process.env.PORT || 5000, () => {
+  console.log(`Server is running on port ${process.env.PORT || 5000}`);
+});
 
 module.exports = app;

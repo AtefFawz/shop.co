@@ -13,7 +13,7 @@ const {
 const upload = require("../middlewares/multer");
 
 const productRoutes = express.Router();
-
+// verifyToken,
 productRoutes
   .route("/")
   .get(verifyToken, getAllProducts)
