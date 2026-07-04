@@ -9,20 +9,24 @@ const { USER } = require("../utils/role");
 
 const generateTokens = (user) => {
   const accessToken = jwt.sign(
-    { email: user.email, id: user._id, role: user.role },
+    { email: user.email, id: user._id || user.id, role: user.role },
     process.env.SECRET_KEY,
     { expiresIn: "1m" },
   );
 
   const refreshToken = jwt.sign(
-    { email: user.email, id: user._id, role: user.role },
+    {
+      email: user.email,
+      id: user._id || user.id,
+      role: user.role,
+      type: "refresh",
+    },
     process.env.SECRET_KEY,
     { expiresIn: "7d" },
   );
 
   return { accessToken, refreshToken };
 };
-
 const setCookieOptions = () => {
   const isProduction = process.env.NODE_ENV === "production";
   return {
@@ -120,21 +124,26 @@ const signIn = Meddle(async (req, res, next) => {
 });
 
 // Refresh Token Process
-// Refresh Token Process
+
 const refreshToken = Meddle(async (req, res, next) => {
   const token = req.cookies.refreshToken;
 
   if (!token) {
+    console.log("❌ No refresh token found in cookies");
     return next(appError.create("No refresh token provided", Fail, 401));
   }
 
   jwt.verify(token, process.env.SECRET_KEY, (err, decoded) => {
-    if (err) {
+    if (err || !decoded || decoded.type !== "refresh") {
+      console.log(
+        "❌ JWT Verification failed or token type mismatch:",
+        err?.message,
+      );
       return next(appError.create("Invalid refresh token", Fail, 401));
     }
 
     const userPayload = {
-      _id: decoded.id,
+      id: decoded.id,
       email: decoded.email,
       role: decoded.role,
     };
@@ -144,7 +153,7 @@ const refreshToken = Meddle(async (req, res, next) => {
 
     res.cookie("refreshToken", newRefreshToken, setCookieOptions());
 
-    res.status(200).json({
+    return res.status(200).json({
       status: Success,
       data: { token: newToken },
     });
