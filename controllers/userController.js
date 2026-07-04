@@ -35,7 +35,6 @@ const setCookieOptions = () => {
     sameSite: isProduction ? "None" : "Lax",
     expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     path: "/",
-    domain: isProduction ? ".vercel.app" : undefined,
   };
 };
 
