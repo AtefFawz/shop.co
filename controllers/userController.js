@@ -8,21 +8,24 @@ const appError = require("../utils/appError");
 const { USER } = require("../utils/role");
 
 const generateTokens = (user) => {
-  const accessToken = jwt.sign(
-    { email: user.email, id: user._id || user.id, role: user.role },
-    process.env.SECRET_KEY,
-    { expiresIn: "1m" },
-  );
+  const payload = {
+    id: user._id || user.id,
+    email: user.email,
+    role: user.role,
+  };
+  const accessToken = jwt.sign(payload, process.env.SECRET_ACCESS_KEY, {
+    expiresIn: "1m",
+  });
 
   const refreshToken = jwt.sign(
     {
-      email: user.email,
-      id: user._id || user.id,
-      role: user.role,
+      ...payload,
       type: "refresh",
     },
-    process.env.SECRET_KEY,
-    { expiresIn: "7d" },
+    process.env.REFRESH_SECRET,
+    {
+      expiresIn: "7d",
+    },
   );
 
   return { accessToken, refreshToken };
@@ -30,6 +33,7 @@ const generateTokens = (user) => {
 
 const setCookieOptions = () => {
   const isProduction = process.env.NODE_ENV === "production";
+
   return {
     httpOnly: true,
     secure: isProduction,
@@ -110,12 +114,14 @@ const signIn = Meddle(async (req, res, next) => {
 
   res.cookie("refreshToken", refreshToken, setCookieOptions());
 
-  res.status(200).json({
+  return res.status(200).json({
     status: Success,
     data: {
       token: accessToken,
       user: {
+        id: user._id,
         fullName: user.fullName,
+        email: user.email,
         role: user.role,
         avatar: user.avatar,
       },
@@ -125,45 +131,55 @@ const signIn = Meddle(async (req, res, next) => {
 
 // Refresh Token Process
 const refreshToken = Meddle(async (req, res, next) => {
-  const token = req.cookies.refreshToken;
-  console.log("🔄 Refresh token request received:");
+  const token = req.cookies?.refreshToken;
+
   if (!token) {
-    console.log("❌ No refresh token found in cookies");
     return next(appError.create("No refresh token provided", Fail, 401));
   }
 
-  jwt.verify(token, process.env.SECRET_KEY, (err, decoded) => {
-    if (err || !decoded || decoded.type !== "refresh") {
-      console.log(
-        "❌ JWT Verification failed or token type mismatch:",
-        err?.message,
-      );
+  try {
+    const decoded = jwt.verify(token, process.env.REFRESH_SECRET);
+
+    if (decoded.type !== "refresh") {
       return next(appError.create("Invalid refresh token", Fail, 401));
     }
 
-    const userPayload = {
-      id: decoded.id,
-      email: decoded.email,
-      role: decoded.role,
-    };
+    const user = await User.findById(decoded.id);
 
-    const { accessToken: newToken, refreshToken: newRefreshToken } =
-      generateTokens(userPayload);
+    if (!user) {
+      return next(appError.create("User not found", Fail, 404));
+    }
+
+    const { accessToken, refreshToken: newRefreshToken } = generateTokens(user);
 
     res.cookie("refreshToken", newRefreshToken, setCookieOptions());
 
     return res.status(200).json({
       status: Success,
-      data: { token: newToken },
+      data: {
+        token: accessToken,
+      },
     });
-  });
+  } catch (error) {
+    return next(appError.create("Invalid or expired refresh token", Fail, 401));
+  }
 });
 
 // Logout Process
-const logout = Meddle(async (req, res, next) => {
-  res.clearCookie("refreshToken", setCookieOptions());
+const logout = Meddle(async (req, res) => {
+  const isProduction = process.env.NODE_ENV === "production";
 
-  res.status(200).json({ status: Success, message: "Logged out successfully" });
+  res.clearCookie("refreshToken", {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "None" : "Lax",
+    path: "/",
+  });
+
+  return res.status(200).json({
+    status: Success,
+    message: "Logged out successfully",
+  });
 });
 
 module.exports = {

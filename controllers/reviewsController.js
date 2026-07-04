@@ -19,12 +19,9 @@ const getAllReviews = Meddle(async (req, res, next) => {
 const addReview = Meddle(async (req, res, next) => {
   const userId = req.currentUser._id || req.currentUser.id;
 
-  console.log(userId);
-
   if (!userId) {
     return next(appError.create("User not authenticated", Fail, 401));
   }
-  console.log(mongoose.Types.ObjectId);
   const { product, rating, comment } = req.body;
 
   if (!product || !rating || !comment) {

@@ -12,12 +12,16 @@ const verifyToken = (req, res, next) => {
     return next(appError.create("Token is required", Fail, 401));
   }
 
+  //* Check if the header starts with "Bearer " and extract the token
+  if (!authHeader.startsWith("Bearer ")) {
+    return next(appError.create("Invalid Authorization Format", Fail, 401));
+  }
+
   // 3- Split the string "Bearer <token>" and take only the token part
   const token = authHeader.split(" ")[1];
-
   try {
     // 4- Check if the token is valid using our Secret Key
-    const currentUser = jwt.verify(token, process.env.SECRET_KEY);
+    const currentUser = jwt.verify(token, process.env.SECRET_ACCESS_KEY);
 
     // 5- Save user data inside the "request" to use it in the next step
     req.currentUser = currentUser;

@@ -33,7 +33,6 @@ const createOrder = Meddle(async (req, res, next) => {
 });
 
 const getOrder = Meddle(async (req, res, next) => {
-  console.log("Logged in user:", req.currentUser);
   const userId = req.currentUser._id || req.currentUser.id;
   if (!req.currentUser) {
     return next(

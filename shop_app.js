@@ -22,7 +22,6 @@ app.use(async (req, res, next) => {
 app.use(express.json());
 const allowedOrigins = [
   "http://localhost:3000",
-  "https://shop-co-vgr2.vercel.app",
   "https://shop-co-eta-henna.vercel.app",
 ];
 
