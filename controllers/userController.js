@@ -23,11 +23,22 @@ const generateTokens = (user) => {
   return { accessToken, refreshToken };
 };
 
+const setCookieOptions = () => {
+  const isProduction = process.env.NODE_ENV === "production";
+  return {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "None" : "Lax",
+    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    path: "/",
+    domain: isProduction ? ".vercel.app" : "localhost",
+  };
+};
+
 // Sign Up Process
 const signUp = Meddle(async (req, res, next) => {
   let { fullName, email, password, role } = req.body;
 
-  // 1. Validation
   if (!fullName || !email || !password) {
     return next(appError.create("All fields are required", Fail, 400));
   }
@@ -36,18 +47,15 @@ const signUp = Meddle(async (req, res, next) => {
     return next(appError.create("Password is too weak.", Fail, 400));
   }
 
-  // 2. Check Duplicate
   const existingUser = await User.findOne({ email });
   if (existingUser) {
     return next(appError.create("Email already registered.", Fail, 400));
   }
 
-  // 3. Hash & Avatar
   const hash = await bcrypt.hash(password, 10);
   const avatarName =
     req.file?.path || "https://res.cloudinary.com/.../default.png";
 
-  // 4. Create & Save
   const newUser = new User({
     fullName,
     email,
@@ -57,19 +65,10 @@ const signUp = Meddle(async (req, res, next) => {
   });
   await newUser.save();
 
-  // 5. Tokens Management
   const { accessToken, refreshToken } = generateTokens(newUser);
 
-  const isProduction = process.env.NODE_ENV === "production";
+  res.cookie("refreshToken", refreshToken, setCookieOptions());
 
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? "None" : "Lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
-
-  // 6. Response
   res.status(201).json({
     status: Success,
     data: {
@@ -89,34 +88,23 @@ const signUp = Meddle(async (req, res, next) => {
 const signIn = Meddle(async (req, res, next) => {
   const { email, password } = req.body;
 
-  // 1. Validate input
   if (!email || !password) {
     return next(appError.create("Email and password are required", Fail, 400));
   }
 
-  // 2. Check if user exists
   const user = await User.findOne({ email }).select("+password");
   if (!user) {
     return next(appError.create("Invalid email or password", Fail, 401));
   }
 
-  // 3. Compare hashed passwords
   const isMatch = await bcrypt.compare(password, user.password);
   if (!isMatch) {
     return next(appError.create("Invalid email or password", Fail, 401));
   }
 
-  // 4. Generate JWT Tokens
   const { accessToken, refreshToken } = generateTokens(user);
 
-  const isProduction = process.env.NODE_ENV === "production";
-
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? "None" : "Lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
+  res.cookie("refreshToken", refreshToken, setCookieOptions());
 
   res.status(200).json({
     status: Success,
@@ -139,19 +127,20 @@ const refreshToken = Meddle(async (req, res, next) => {
     return next(appError.create("No refresh token provided", Fail, 401));
   }
 
-  // Verify the refresh token
   jwt.verify(token, process.env.SECRET_KEY, (err, decoded) => {
     if (err) {
       return next(appError.create("Invalid refresh token", Fail, 401));
     }
 
-    const newToken = jwt.sign(
-      { email: decoded.email, id: decoded.id, role: decoded.role },
-      process.env.SECRET_KEY,
-      { expiresIn: "1m" },
-    );
+    const { accessToken: newToken, refreshToken: newRefreshToken } =
+      generateTokens(decoded);
 
-    res.status(200).json({ status: Success, data: { token: newToken } });
+    res.cookie("refreshToken", newRefreshToken, setCookieOptions());
+
+    res.status(200).json({
+      status: Success,
+      data: { token: newToken },
+    });
   });
 });
 
@@ -164,6 +153,7 @@ const logout = Meddle(async (req, res, next) => {
     secure: isProduction,
     sameSite: isProduction ? "None" : "Lax",
     path: "/",
+    domain: isProduction ? ".vercel.app" : "localhost",
   });
   res.status(200).json({ status: Success, message: "Logged out successfully" });
 });
