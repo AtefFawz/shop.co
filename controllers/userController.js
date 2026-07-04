@@ -27,6 +27,7 @@ const generateTokens = (user) => {
 
   return { accessToken, refreshToken };
 };
+
 const setCookieOptions = () => {
   const isProduction = process.env.NODE_ENV === "production";
   return {
@@ -123,10 +124,9 @@ const signIn = Meddle(async (req, res, next) => {
 });
 
 // Refresh Token Process
-
 const refreshToken = Meddle(async (req, res, next) => {
   const token = req.cookies.refreshToken;
-
+  console.log("🔄 Refresh token request received:");
   if (!token) {
     console.log("❌ No refresh token found in cookies");
     return next(appError.create("No refresh token provided", Fail, 401));
@@ -161,15 +161,8 @@ const refreshToken = Meddle(async (req, res, next) => {
 
 // Logout Process
 const logout = Meddle(async (req, res, next) => {
-  const isProduction = process.env.NODE_ENV === "production";
+  res.clearCookie("refreshToken", setCookieOptions());
 
-  res.clearCookie("refreshToken", {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? "None" : "Lax",
-    path: "/",
-    domain: isProduction ? ".vercel.app" : "localhost",
-  });
   res.status(200).json({ status: Success, message: "Logged out successfully" });
 });
 
