@@ -120,6 +120,7 @@ const signIn = Meddle(async (req, res, next) => {
 });
 
 // Refresh Token Process
+// Refresh Token Process
 const refreshToken = Meddle(async (req, res, next) => {
   const token = req.cookies.refreshToken;
 
@@ -132,8 +133,14 @@ const refreshToken = Meddle(async (req, res, next) => {
       return next(appError.create("Invalid refresh token", Fail, 401));
     }
 
+    const userPayload = {
+      _id: decoded.id,
+      email: decoded.email,
+      role: decoded.role,
+    };
+
     const { accessToken: newToken, refreshToken: newRefreshToken } =
-      generateTokens(decoded);
+      generateTokens(userPayload);
 
     res.cookie("refreshToken", newRefreshToken, setCookieOptions());
 
