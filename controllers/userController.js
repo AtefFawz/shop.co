@@ -36,8 +36,8 @@ const setCookieOptions = () => {
 
   return {
     httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? "None" : "Lax",
+    secure: true,
+    sameSite: "None",
     expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     path: "/",
   };
@@ -151,7 +151,6 @@ const refreshToken = Meddle(async (req, res, next) => {
     }
 
     const { accessToken, refreshToken: newRefreshToken } = generateTokens(user);
-
     res.cookie("refreshToken", newRefreshToken, setCookieOptions());
 
     return res.status(200).json({
