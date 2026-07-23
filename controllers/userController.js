@@ -14,7 +14,7 @@ const generateTokens = (user) => {
     role: user.role,
   };
   const accessToken = jwt.sign(payload, process.env.SECRET_ACCESS_KEY, {
-    expiresIn: "1m",
+    expiresIn: "15m",
   });
 
   const refreshToken = jwt.sign(
