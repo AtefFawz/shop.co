@@ -62,7 +62,8 @@ const signUp = Meddle(async (req, res, next) => {
 
   const hash = await bcrypt.hash(password, 10);
   const avatarName =
-    req.file?.path || "https://res.cloudinary.com/.../default.png";
+    req.file?.path ||
+    "https://res.cloudinary.com/dudit0nty/image/upload/v1777336486/shop-co-uploads/cwmwfgwrwxxqlk65grw4.png";
 
   const newUser = new User({
     fullName,
