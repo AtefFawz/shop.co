@@ -7,17 +7,40 @@ const { ADMIN } = require("../utils/role");
 const mongoose = require("mongoose");
 
 const getAllReviews = Meddle(async (req, res, next) => {
-  const allReviews = await reviews.find({}).populate("user", "fullName avatar");
+  const query = req.query || {};
+  const reviewId = query.product ? { product: query.product } : {};
+
+  const page = parseInt(query.page, 10) || 1;
+
+  const limit = parseInt(query.limit, 10) || 10;
+
+  const skip = (page - 1) * limit;
+
+  const allReviews = await reviews
+    .find(reviewId)
+    .populate("user", "fullName avatar")
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit)
+    .lean();
+
+  const totalReviews = await reviews.countDocuments(reviewId);
 
   res.status(200).json({
     status: "success",
     results: allReviews.length,
+    pagination: {
+      total: totalReviews,
+      page: page,
+      limit: limit,
+      totalPages: Math.ceil(totalReviews / limit),
+    },
     data: { reviews: allReviews },
   });
 });
 
 const addReview = Meddle(async (req, res, next) => {
-  const userId = req.currentUser._id || req.currentUser.id;
+  const userId = req.currentUser?._id || req.currentUser?.id;
 
   if (!userId) {
     return next(appError.create("User not authenticated", Fail, 401));
@@ -43,57 +66,36 @@ const addReview = Meddle(async (req, res, next) => {
 const deleteReview = Meddle(async (req, res, next) => {
   const reviewId = req.params.id;
 
-  if (!reviewId) {
+  if (!reviewId || !mongoose.Types.ObjectId.isValid(reviewId)) {
     return next(appError.create("Review ID is required", Fail, 400));
   }
 
-  const review = await reviews.findById(reviewId);
+  const currentUserId = (req.currentUser.id || req.currentUser._id).toString();
 
-  if (!review) {
-    return next(appError.create("Review not found", Fail, 404));
+  const deleteFilter = { _id: reviewId };
+
+  if (req.currentUser.role !== ADMIN) {
+    deleteFilter.user = currentUserId;
   }
 
-  const currentUserId = req.currentUser.id.toString();
+  const deletedReview = await reviews.findOneAndDelete(deleteFilter);
 
-  if (
-    review.user.toString() !== currentUserId &&
-    req.currentUser.role !== ADMIN
-  ) {
+  if (!deletedReview) {
     return next(
       appError.create(
-        "You are not authorized to delete this review",
+        "Review not found or you are not authorized to delete it",
         Fail,
-        403,
+        404,
       ),
     );
   }
-
-  await reviews.findByIdAndDelete(reviewId);
-
   res
     .status(200)
     .json({ status: "success", message: "Review deleted successfully" });
 });
 
-// const getReviewById = Meddle(async (req, res, next) => {
-//   const reviewId = req.params.id;
-
-//   if (!reviewId) {
-//     return next(appError.create("Review ID is required", Fail, 400));
-//   }
-
-//   const review = await reviews.findById(reviewId);
-
-//   if (!review) {
-//     return next(appError.create("Review not found", Fail, 404));
-//   }
-
-//   res.status(200).json({ status: "success", data: { review } });
-// });
-
 module.exports = {
   addReview,
   getAllReviews,
-  // getReviewById,
   deleteReview,
 };

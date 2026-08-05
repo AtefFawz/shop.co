@@ -1,63 +1,114 @@
+const mongoose = require("mongoose");
 const Meddle = require("../middlewares/meddle");
 const appError = require("../utils/appError");
 const productSchema = require("../modules/productSchema");
+const reviewsSchema = require("../modules/reviewsSchema");
 const { Success, Error, Fail } = require("../utils/httpText");
 
 const getAllProducts = Meddle(async (req, res) => {
   const { keyword } = req.query;
   let filter = {};
   if (keyword) {
-    filter = {
-      $or: [
-        { name: { $regex: keyword, $options: "i" } },
-        { description: { $regex: keyword, $options: "i" } },
-        { section: { $regex: keyword, $options: "i" } },
-        { type: { $regex: keyword, $options: "i" } },
-      ],
-    };
+    filter = { $text: { $search: keyword } };
   }
+  const page = parseInt(req.query.page, 10) || 1;
+  const limit = parseInt(req.query.limit, 10) || 10;
+  const skip = (page - 1) * limit;
 
+  const totalProducts = await productSchema.countDocuments(filter);
   const products = await productSchema
     .find(filter, { __v: false })
-    .populate("reviews");
+    .populate("reviews")
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit)
+    .lean({ virtuals: true });
 
   res.status(200).json({
-    status: "Success",
+    status: Success,
     results: products.length,
+    pagination: {
+      total: totalProducts,
+      page: page,
+      limit: limit,
+      totalPages: Math.ceil(totalProducts / limit),
+    },
     data: { Products: products },
   });
 });
 
 const getProduct = Meddle(async (req, res, next) => {
+  const productId = req.params.productId;
+  if (!productId || !mongoose.Types.ObjectId.isValid(productId)) {
+    return next(appError.create("Invalid product ID", Fail, 400));
+  }
+
   const productFound = await productSchema
-    .findById(req.params.productId)
+    .findById(productId)
     .populate({
       path: "reviews",
       populate: {
         path: "user",
         select: "fullName avatar",
       },
-    });
+    })
+    .lean({ virtuals: true });
 
   if (!productFound) {
-    return next(appError.create("This product was not found", "Fail", 404));
+    return next(appError.create("This product was not found", Fail, 404));
   }
 
   res.status(200).json({
-    status: "Success",
+    status: Success,
     data: { product: productFound },
   });
 });
 
-const addProduct = Meddle(async (req, res) => {
-  const add = await productSchema.create(req.body);
-  add.photo = req.file.path;
-  await add.save();
-  res.status(201).json({ status: Success, data: { Product: add } });
+const addProduct = Meddle(async (req, res, next) => {
+  const {
+    name,
+    description,
+    price,
+    category,
+    section,
+    discount,
+    isSale,
+    colors,
+    size,
+    type,
+  } = req.body;
+
+  if (!req.file) {
+    return next(appError.create("Product photo is required", Fail, 400));
+  }
+
+  const newProduct = await productSchema.create({
+    name,
+    description,
+    price,
+    category,
+    section,
+    discount,
+    isSale,
+    colors,
+    size,
+    type,
+    photo: req.file.path,
+  });
+
+  res.status(201).json({
+    status: Success,
+    data: { Product: newProduct },
+  });
 });
 
 const updateProduct = Meddle(async (req, res, next) => {
   const productId = req.params.productId;
+
+  if (!productId || !mongoose.Types.ObjectId.isValid(productId)) {
+    return next(appError.create("Invalid product ID", Fail, 400));
+  }
+
   const updateData = { ...req.body };
 
   if (req.file) {
@@ -67,12 +118,10 @@ const updateProduct = Meddle(async (req, res, next) => {
   const update = await productSchema.findByIdAndUpdate(productId, updateData, {
     new: true,
     runValidators: true,
-    returnDocument: "after",
   });
 
   if (!update) {
-    const Error = appError.create("This product not found", Fail, 404);
-    return next(Error);
+    return next(appError.create("This product was not found", Fail, 404));
   }
 
   res.status(200).json({ status: Success, data: { Product: update } });
@@ -80,12 +129,23 @@ const updateProduct = Meddle(async (req, res, next) => {
 
 const deleteProduct = Meddle(async (req, res, next) => {
   const productId = req.params.productId;
-  const deleted = await productSchema.findByIdAndDelete(productId);
-  if (!deleted) {
-    const Error = appError.create("This product is not define", Fail, 400);
-    return next(Error);
+  if (!productId || !mongoose.Types.ObjectId.isValid(productId)) {
+    return next(appError.create("Invalid product ID", Fail, 400));
   }
-  res.status(200).json({ status: Success, data: { Product: null } });
+
+  const deleted = await productSchema.findByIdAndDelete(productId);
+
+  if (!deleted) {
+    return next(appError.create("This product was not found", Fail, 404));
+  }
+
+  await reviewsSchema.deleteMany({ product: productId });
+
+  res.status(200).json({
+    status: Success,
+    message: "Product and its associated reviews deleted successfully",
+    data: null,
+  });
 });
 
 module.exports = {

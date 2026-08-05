@@ -13,7 +13,6 @@ const productSchema = new mongoose.Schema(
     type: { type: String },
     section: { type: String, required: true },
     photo: { type: String },
-
   },
   {
     toJSON: {
@@ -33,4 +32,10 @@ productSchema.virtual("reviews", {
   foreignField: "product",
 });
 
+productSchema.index({
+  name: "text",
+  description: "text",
+  section: "text",
+  type: "text",
+});
 module.exports = mongoose.model("product", productSchema);
