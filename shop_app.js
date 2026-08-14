@@ -3,8 +3,34 @@ const express = require("express");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
 const connectDB = require("./config/db");
-
+const { Server } = require("socket.io");
+const http = require("http");
+const { socketHandler } = require("./middlewares/socketHandler");
+const { setIO } = require("./utils/socket");
 const app = express();
+
+// --> Sockets <--
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:3000",
+    credentials: true,
+  },
+});
+
+// app.set("io", io);
+io.use(socketHandler);
+// User Connection
+io.on("connection", (socket) => {
+  socket.join(`user:${socket.userId}`);
+
+  socket.on("disconnect", () => {
+    console.log("Disconnected:");
+  });
+});
+
+// Set Io
+setIO(io);
 
 // Database Connection Middleware
 app.use(async (req, res, next) => {
@@ -25,6 +51,7 @@ const allowedOrigins = [
   "https://shop-co-eta-henna.vercel.app",
 ];
 
+// -> Cors Settings
 app.use(
   cors({
     origin: function (origin, callback) {
@@ -47,6 +74,7 @@ const { adminRoute } = require("./routes/adminRoutes");
 const { reviewsRouter } = require("./routes/reviewsRoutes");
 const { profileRouts } = require("./routes/profileRoutes");
 const { Error } = require("./utils/httpText");
+const { notificationRouter } = require("./routes/notificationRoutes");
 
 // Routes
 app.use("/api/product", productRoutes);
@@ -55,6 +83,7 @@ app.use("/api/order", orderRouter);
 app.use("/api/admin", adminRoute);
 app.use("/api/review", reviewsRouter);
 app.use("/api/profile", profileRouts);
+app.use("/api/notifications", notificationRouter);
 
 // Global Error Handler
 // Middleware Handler any routes is not found
@@ -68,8 +97,8 @@ app.use((err, req, res, next) => {
   });
 });
 
-// app.listen(process.env.PORT || 5000, () => {
-//   console.log(`Server is running on port ${process.env.PORT || 5000}`);
-// });
+server.listen(process.env.PORT || 5000, () => {
+  console.log(`Server is running on port ${process.env.PORT || 5000}`);
+});
 
 module.exports = app;

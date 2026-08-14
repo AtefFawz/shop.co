@@ -6,6 +6,7 @@ const {
   getOrder,
   updateOrderStatus,
   deleteOrder,
+  getOrderById,
 } = require("../controllers/orderController");
 
 const verifyToken = require("../middlewares/verifyToken");
@@ -16,11 +17,12 @@ orderRouter.use(verifyToken);
 
 orderRouter.get("/all", allowedRoles(ADMIN), getOrders);
 
-orderRouter.route("/").post(createOrder).get(getOrder);
-
 orderRouter
   .route("/:id")
+  .get(getOrderById)
   .patch(allowedRoles(ADMIN), updateOrderStatus)
   .delete(deleteOrder);
+
+orderRouter.route("/").post(createOrder).get(getOrder);
 
 module.exports = { orderRouter };

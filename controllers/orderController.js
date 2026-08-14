@@ -1,11 +1,12 @@
 const mongoose = require("mongoose");
 const { Success, Fail } = require("../utils/httpText");
 const Order = require("../modules/orderSchema");
+const Notification = require("../modules/notificationSchema");
 const Meddle = require("../middlewares/meddle");
 const appError = require("../utils/appError");
 const productSchema = require("../modules/productSchema");
 const { ADMIN, MANAGER } = require("../utils/role");
-
+const { getIO } = require("../utils/socket");
 const createOrder = Meddle(async (req, res, next) => {
   const userId = req.currentUser?._id || req.currentUser?.id;
 
@@ -95,33 +96,50 @@ const getOrder = Meddle(async (req, res, next) => {
 
 // Update Order Status
 const updateOrderStatus = Meddle(async (req, res, next) => {
-  const { id } = req.params;
   const { status } = req.body;
 
+  // Check id current user
   const userId = req.currentUser?._id || req.currentUser?.id;
   if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
     return next(appError.create("Unauthorized: Please login first", Fail, 401));
   }
 
+  // Check id From Params
+  const { id } = req.params;
   if (!id || !mongoose.Types.ObjectId.isValid(id)) {
     return next(appError.create("Invalid order ID", Fail, 400));
   }
 
+  // Check Status
   const validStatuses = ["Pending", "Shipped", "Delivered", "Cancelled"];
   if (!validStatuses.includes(status)) {
     return next(appError.create("Invalid status value", Fail, 400));
   }
 
+  // Find Order
   const updatedOrder = await Order.findByIdAndUpdate(
     id,
     { status },
-    { new: true, runValidators: true },
-  );
+    { returnDocument: "after", runValidators: true },
+  ).lean({ virtuals: true });
 
+  // Check Order
   if (!updatedOrder) {
     return next(appError.create("Order not found", Fail, 404));
   }
 
+  // Save Notification in database
+  const notification = await Notification.create({
+    user: updatedOrder.user,
+    type: "ORDER_STATUS_CHANGED",
+    title: "Order Status Updated",
+    message: `Your order status has been changed to ${status}`,
+    order: updatedOrder._id,
+  });
+
+  const io = getIO();
+  const room = `user:${updatedOrder.user.toString()}`;
+  io.to(room).emit("notification", notification);
   res.status(200).json({ status: Success, data: { order: updatedOrder } });
 });
 
@@ -187,10 +205,56 @@ const deleteOrder = Meddle(async (req, res, next) => {
     .json({ status: Success, message: "Order deleted successfully" });
 });
 
+// Get single Order
+
+// Get Single Order
+const getOrderById = Meddle(async (req, res, next) => {
+  const { id } = req.params;
+
+  const userId = req.currentUser?._id || req.currentUser?.id;
+  const role = req.currentUser?.role;
+
+  // Check authentication
+  if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+    return next(appError.create("Unauthorized: Please login first", Fail, 401));
+  }
+
+  // Check order ID
+  if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+    return next(appError.create("Invalid order ID", Fail, 400));
+  }
+
+  // Find order
+  const order = await Order.findById(id)
+    .populate("user", "name email")
+    .populate("orderItems.product")
+    .lean({ virtuals: true });
+
+  // Order doesn't exist
+  if (!order) {
+    return next(appError.create("Order not found", Fail, 404));
+  }
+
+  // User can only see his own order
+  if (role !== "ADMIN" && order.user._id.toString() !== userId.toString()) {
+    return next(
+      appError.create("You are not authorized to view this order", Fail, 403),
+    );
+  }
+
+  res.status(200).json({
+    status: Success,
+    data: {
+      order,
+    },
+  });
+});
+
 module.exports = {
   createOrder,
   getOrder,
   getOrders,
   updateOrderStatus,
   deleteOrder,
+  getOrderById,
 };
