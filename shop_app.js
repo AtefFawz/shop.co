@@ -1,82 +1,70 @@
 require("dotenv").config();
+
 const express = require("express");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
-const connectDB = require("./config/db");
-const { Server } = require("socket.io");
 const http = require("http");
+const { Server } = require("socket.io");
+
+// Config
+const connectDB = require("./config/db");
+
+// Socket
 const { socketHandler } = require("./middlewares/socketHandler");
 const { setIO } = require("./utils/socket");
-const app = express();
 
-// --> Sockets <--
-const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: "http://localhost:3000",
-    credentials: true,
-  },
-});
-
-// app.set("io", io);
-io.use(socketHandler);
-// User Connection
-io.on("connection", (socket) => {
-  socket.join(`user:${socket.userId}`);
-
-  socket.on("disconnect", () => {
-    console.log("Disconnected:");
-  });
-});
-
-// Set Io
-setIO(io);
-
-// Database Connection Middleware
-app.use(async (req, res, next) => {
-  try {
-    await connectDB();
-    next();
-  } catch (err) {
-    res
-      .status(500)
-      .json({ status: "Error", message: "Database Connection Error" });
-  }
-});
-
-// Middle wares
-app.use(express.json());
-const allowedOrigins = [
-  "http://localhost:3000",
-  "https://shop-co-eta-henna.vercel.app",
-];
-
-// -> Cors Settings
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true,
-  }),
-);
-
-app.use(cookieParser());
-
+// Routes
 const { productRoutes } = require("./routes/productRoutes");
 const { userRouts } = require("./routes/userRouts");
 const { orderRouter } = require("./routes/orderRoutes");
 const { adminRoute } = require("./routes/adminRoutes");
 const { reviewsRouter } = require("./routes/reviewsRoutes");
 const { profileRouts } = require("./routes/profileRoutes");
-const { Error } = require("./utils/httpText");
 const { notificationRouter } = require("./routes/notificationRoutes");
 
-// Routes
+// Utils
+const { Error } = require("./utils/httpText");
+
+const app = express();
+
+/* CORS */
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://shop-co-eta-henna.vercel.app",
+];
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true,
+};
+
+/* Middlewares */
+app.use(express.json());
+app.use(cookieParser());
+app.use(cors(corsOptions));
+
+/* Database Connection */
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error("Database connection error:", err);
+
+    res.status(500).json({
+      status: "Error",
+      message: "Database Connection Error",
+      code: 500,
+    });
+  }
+});
+
+/* Routes */
 app.use("/api/product", productRoutes);
 app.use("/api/auth", userRouts);
 app.use("/api/order", orderRouter);
@@ -85,11 +73,24 @@ app.use("/api/review", reviewsRouter);
 app.use("/api/profile", profileRouts);
 app.use("/api/notifications", notificationRouter);
 
-// Global Error Handler
-// Middleware Handler any routes is not found
+/* ================================================== */
+/* 404 - Route Not Found */
+/* ================================================== */
 
+app.use((req, res) => {
+  res.status(404).json({
+    status: "Error",
+    message: "Route not found",
+    code: 404,
+  });
+});
+
+/* Global Error Handler */
 app.use((err, req, res, next) => {
+  console.error("Global Error:", err);
+
   const statusCode = err.statusCode || 500;
+
   res.status(statusCode).json({
     status: err.statusText || Error,
     message: err.errorText || "Internal Server Error",
@@ -97,8 +98,33 @@ app.use((err, req, res, next) => {
   });
 });
 
-server.listen(process.env.PORT || 5000, () => {
-  console.log(`Server is running on port ${process.env.PORT || 5000}`);
+/* HTTP Server */
+const server = http.createServer(app);
+
+/* Socket.IO */
+const io = new Server(server, {
+  cors: corsOptions,
+});
+
+io.use(socketHandler);
+
+io.on("connection", (socket) => {
+  socket.join(`user:${socket.userId}`);
+
+  console.log(`User connected: ${socket.userId}`);
+
+  socket.on("disconnect", () => {
+    console.log(`User disconnected: ${socket.userId}`);
+  });
+});
+
+/* Set Socket.IO Instance */
+setIO(io);
+
+const PORT = process.env.PORT || 5000;
+
+server.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });
 
 module.exports = app;

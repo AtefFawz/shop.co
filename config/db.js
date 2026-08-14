@@ -3,14 +3,20 @@ const mongoose = require("mongoose");
 let cachedConnection = null;
 
 const connectDB = async () => {
-  if (cachedConnection) return cachedConnection;
+  if (cachedConnection) {
+    return cachedConnection;
+  }
 
   try {
-    const db = await mongoose.connect(process.env.URL, {
+    const connection = await mongoose.connect(process.env.URL, {
       serverSelectionTimeoutMS: 5000,
     });
-    cachedConnection = db;
-    return db;
+
+    cachedConnection = connection;
+
+    console.log("Database connected successfully");
+
+    return cachedConnection;
   } catch (err) {
     console.error("Database Connection Failed:", err.message);
     throw err;
