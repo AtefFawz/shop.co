@@ -5,6 +5,7 @@ const cookieParser = require("cookie-parser");
 const cors = require("cors");
 const http = require("http");
 const { Server } = require("socket.io");
+const { socketConnection } = require("./sockets/index");
 
 // Config
 const connectDB = require("./config/db");
@@ -32,6 +33,7 @@ const allowedOrigins = [
   "http://localhost:3000",
   "https://shop-co-eta-henna.vercel.app",
 ];
+
 const corsOptions = {
   origin: function (origin, callback) {
     if (!origin || allowedOrigins.includes(origin)) {
@@ -73,10 +75,7 @@ app.use("/api/review", reviewsRouter);
 app.use("/api/profile", profileRouts);
 app.use("/api/notifications", notificationRouter);
 
-/* ================================================== */
 /* 404 - Route Not Found */
-/* ================================================== */
-
 app.use((req, res) => {
   res.status(404).json({
     status: "Error",
@@ -108,15 +107,15 @@ const io = new Server(server, {
 
 io.use(socketHandler);
 
-io.on("connection", (socket) => {
-  socket.join(`user:${socket.userId}`);
+// io.on("connection", (socket) => {
+//   socket.join(`user:${socket.userId}`);
 
-  console.log(`User connected: ${socket.userId}`);
+//   socket.on("disconnect", () => {
+//     console.log(`User disconnected: ${socket.userId}`);
+//   });
+// });
 
-  socket.on("disconnect", () => {
-    console.log(`User disconnected: ${socket.userId}`);
-  });
-});
+socketConnection(io);
 
 /* Set Socket.IO Instance */
 setIO(io);

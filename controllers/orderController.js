@@ -2,11 +2,13 @@ const mongoose = require("mongoose");
 const { Success, Fail } = require("../utils/httpText");
 const Order = require("../modules/orderSchema");
 const Notification = require("../modules/notificationSchema");
+const User = require("../modules/userSchema");
 const Meddle = require("../middlewares/meddle");
 const appError = require("../utils/appError");
 const productSchema = require("../modules/productSchema");
-const { ADMIN, MANAGER } = require("../utils/role");
+const { ADMIN, MANAGER, USER } = require("../utils/role");
 const { getIO } = require("../utils/socket");
+
 const createOrder = Meddle(async (req, res, next) => {
   const userId = req.currentUser?._id || req.currentUser?.id;
 
@@ -68,31 +70,52 @@ const createOrder = Meddle(async (req, res, next) => {
     totalPrice: calculatedTotalPrice,
   });
 
+  // NOTIFICATION FOR ADMIN
+  const user = await User.findById(userId)
+    .select("fullName")
+    .lean({ virtuals: true });
+
+  if (!user) {
+    return next(appError.create("User not found", Fail, 404));
+  }
+
+  const notification = await Notification.create({
+    user: userId,
+    recipientRole: ADMIN,
+    title: "New Order",
+    message: `New Order From User: ${user.fullName}`,
+    type: "Order",
+    order: newOrder._id,
+  });
+  console.log("notification Order ->", notification);
+  const io = getIO();
+
+  io.to("admin").emit("new_notification", notification);
   res.status(201).json({
     status: Success,
     data: { order: newOrder },
   });
 });
 
-const getOrder = Meddle(async (req, res, next) => {
-  const userId = req.currentUser?._id || req.currentUser?.id;
-  if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
-    return next(
-      appError.create("Unauthorized: User not found in request", Fail, 401),
-    );
-  }
+// const getOrder = Meddle(async (req, res, next) => {
+//   const userId = req.currentUser?._id || req.currentUser?.id;
+//   if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+//     return next(
+//       appError.create("Unauthorized: User not found in request", Fail, 401),
+//     );
+//   }
 
-  const orders = await Order.find({ user: userId })
-    .populate("orderItems.product", "name image price")
-    .sort({ createdAt: -1 })
-    .lean({ virtuals: true });
+//   const orders = await Order.find({ user: userId })
+//     .populate("orderItems.product", "name image price")
+//     .sort({ createdAt: -1 })
+//     .lean({ virtuals: true });
 
-  res.status(200).json({
-    status: Success,
-    results: orders.length,
-    data: { orders },
-  });
-});
+//   res.status(200).json({
+//     status: Success,
+//     results: orders.length,
+//     data: { orders },
+//   });
+// });
 
 // Update Order Status
 const updateOrderStatus = Meddle(async (req, res, next) => {
@@ -131,6 +154,8 @@ const updateOrderStatus = Meddle(async (req, res, next) => {
   // Save Notification in database
   const notification = await Notification.create({
     user: updatedOrder.user,
+    recipient: updatedOrder.user,
+    recipientRole: USER,
     type: "ORDER_STATUS_CHANGED",
     title: "Order Status Updated",
     message: `Your order status has been changed to ${status}`,
@@ -138,7 +163,7 @@ const updateOrderStatus = Meddle(async (req, res, next) => {
   });
 
   const io = getIO();
-  const room = `user:${updatedOrder.user.toString()}`;
+  const room = `user:${updatedOrder.user}`;
   io.to(room).emit("notification", notification);
   res.status(200).json({ status: Success, data: { order: updatedOrder } });
 });
@@ -205,8 +230,6 @@ const deleteOrder = Meddle(async (req, res, next) => {
     .json({ status: Success, message: "Order deleted successfully" });
 });
 
-// Get single Order
-
 // Get Single Order
 const getOrderById = Meddle(async (req, res, next) => {
   const { id } = req.params;
@@ -226,8 +249,8 @@ const getOrderById = Meddle(async (req, res, next) => {
 
   // Find order
   const order = await Order.findById(id)
-    .populate("user", "name email")
-    .populate("orderItems.product")
+    .populate("user", "name email ")
+    .populate("orderItems.product", "name image price")
     .lean({ virtuals: true });
 
   // Order doesn't exist
@@ -252,7 +275,7 @@ const getOrderById = Meddle(async (req, res, next) => {
 
 module.exports = {
   createOrder,
-  getOrder,
+  // getOrder,
   getOrders,
   updateOrderStatus,
   deleteOrder,

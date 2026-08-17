@@ -5,13 +5,13 @@ const notificationRouter = express.Router();
 
 const {
   getNotifications,
-  updateNotification,
+  markAsRead,
   readAll,
 } = require("../controllers/notificationController");
 
 notificationRouter.use(verifyToken);
 notificationRouter.get("/", getNotifications);
 notificationRouter.patch("/readAll", readAll);
-notificationRouter.patch("/:id", updateNotification);
+notificationRouter.patch("/:id", markAsRead);
 
 module.exports = { notificationRouter };

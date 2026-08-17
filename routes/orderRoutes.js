@@ -23,6 +23,7 @@ orderRouter
   .patch(allowedRoles(ADMIN), updateOrderStatus)
   .delete(deleteOrder);
 
-orderRouter.route("/").post(createOrder).get(getOrder);
+orderRouter.route("/").post(createOrder);
+// .get(getOrder);
 
 module.exports = { orderRouter };

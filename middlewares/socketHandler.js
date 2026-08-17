@@ -8,8 +8,8 @@ const socketHandler = (socket, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.SECRET_ACCESS_KEY);
-
     socket.userId = decoded.id;
+    socket.role = decoded.role;
 
     next();
   } catch (error) {
