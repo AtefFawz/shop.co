@@ -24,7 +24,7 @@ const { profileRouts } = require("./routes/profileRoutes");
 const { notificationRouter } = require("./routes/notificationRoutes");
 
 // Utils
-const { Error } = require("./utils/httpText");
+// const { Error } = require("./utils/httpText");
 
 const app = express();
 
@@ -91,7 +91,7 @@ app.use((err, req, res, next) => {
   const statusCode = err.statusCode || 500;
 
   res.status(statusCode).json({
-    status: err.statusText || Error,
+    status: err.statusText || "Error",
     message: err.errorText || "Internal Server Error",
     code: statusCode,
   });
