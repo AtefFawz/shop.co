@@ -51,20 +51,20 @@ app.use(cookieParser());
 app.use(cors(corsOptions));
 
 /* Database Connection */
-app.use(async (req, res, next) => {
-  try {
-    await connectDB();
-    next();
-  } catch (err) {
-    console.error("Database connection error:", err);
+// app.use(async (req, res, next) => {
+//   try {
+//     await connectDB();
+//     next();
+//   } catch (err) {
+//     console.error("Database connection error:", err);
 
-    res.status(500).json({
-      status: "Error",
-      message: "Database Connection Error",
-      code: 500,
-    });
-  }
-});
+//     res.status(500).json({
+//       status: "Error",
+//       message: "Database Connection Error",
+//       code: 500,
+//     });
+//   }
+// });
 
 /* Routes */
 app.use("/api/product", productRoutes);
@@ -122,8 +122,10 @@ setIO(io);
 
 const PORT = process.env.PORT || 4000;
 
-server.listen(PORT, "0.0.0.0", () => {
-  console.log(`Server running on port ${PORT}`);
+connectDB().then(() => {
+  server.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server running on port ${PORT}`);
+  });
 });
 
 module.exports = app;
