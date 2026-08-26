@@ -23,7 +23,7 @@ const getAllProducts = Meddle(async (req, res) => {
     .skip(skip)
     .limit(limit)
     .lean({ virtuals: true });
-
+    
   res.status(200).json({
     status: Success,
     results: products.length,
