@@ -13,6 +13,14 @@ const productSchema = new mongoose.Schema(
     type: { type: String },
     section: { type: String, required: true },
     photo: { type: String },
+    ratingsAverage: {
+      type: Number,
+      default: 0,
+    },
+    ratingsQuantity: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     toJSON: {
