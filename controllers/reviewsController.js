@@ -22,7 +22,7 @@ const getAllReviews = Meddle(async (req, res, next) => {
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limit)
-    .lean();
+    .lean({ virtuals: true });
 
   const totalReviews = await reviews.countDocuments(reviewId);
 
