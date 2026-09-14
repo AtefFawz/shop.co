@@ -18,7 +18,6 @@ const getMe = Meddle(async (req, res, next) => {
   const result = await User.findById(userId).lean({ virtuals: true });
 
   if (!result) {
-    
     return next(appError.create("user not found", Fail, 404));
   }
 
@@ -91,7 +90,6 @@ const getMyReviews = Meddle(async (req, res, next) => {
   }
 
   const totalReviews = await Review.countDocuments({ user: userId });
-  console.log("totalReviews: ", totalReviews);
   const reviews = await Review.find({ user: userId })
     .populate("product", "name photo price")
     .sort({ createdAt: -1 })
@@ -144,7 +142,6 @@ const updateUser = Meddle(async (req, res, next) => {
     runValidators: true,
   }).select("-password");
 
-  console.log(updatedUser);
   if (!updatedUser) {
     return next(appError.create("User was not found", Fail, 404));
   }
