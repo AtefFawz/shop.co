@@ -10,9 +10,17 @@ const productSchema = new mongoose.Schema(
     isSale: { type: Boolean },
     colors: { type: [String] },
     size: { type: [String] },
-    type: { type: String },
+    gender: { type: String },
     section: { type: String, required: true },
     photo: { type: String },
+    images: { type: [String] },
+    style: { type: String },
+    countInStock: {
+      type: Number,
+      required: [true, "Product stock quantity is required"],
+      min: [0, "Quantity cannot be negative"],
+      default: 0,
+    },
     ratingsAverage: {
       type: Number,
       default: 0,
@@ -44,6 +52,6 @@ productSchema.index({
   name: "text",
   description: "text",
   section: "text",
-  type: "text",
+  gender: "text",
 });
 module.exports = mongoose.model("product", productSchema);

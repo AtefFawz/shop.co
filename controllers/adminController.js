@@ -7,30 +7,149 @@ const appError = require("../utils/appError");
 const { Fail, Success } = require("../utils/httpText");
 const { USER, MANAGER, ADMIN } = require("../utils/role");
 
-const getAdminStats = Meddle(async (req, res, next) => {
-  console.log("getAdminStats");
-  const [userCount, productCount, orderCount, revenueData] = await Promise.all([
-    User.countDocuments(),
-    Product.countDocuments(),
-    Order.countDocuments(),
+// const getAdminStats = Meddle(async (req, res, next) => {
+//   const [userCount, productCount, orderCount, revenueData] = await Promise.all([
+//     User.countDocuments(),
+//     Product.countDocuments(),
+//     Order.countDocuments(),
+//     Order.aggregate([
+//       { $match: { status: "Delivered" } },
+//       { $group: { _id: null, total: { $sum: "$totalPrice" } } },
+//     ]),
+//   ]);
+
+//   const totalRevenue = revenueData.length > 0 ? revenueData[0].total : 0;
+
+//   res.status(200).json({
+//     status: Success,
+//     data: {
+//       users: userCount,
+//       products: productCount,
+//       orders: orderCount,
+//       revenue: totalRevenue,
+//     },
+//   });
+// });
+
+// Dashboard for Admin
+
+const getDashboardStats = async (req, res) => {
+  const now = new Date();
+
+  // Start date of the current month
+  const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  // Last month start date
+  const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+  // 1. (Revenue)
+  const [thisMonthRevData, lastMonthRevData] = await Promise.all([
     Order.aggregate([
-      { $match: { status: "Delivered" } },
+      {
+        $match: { createdAt: { $gte: startOfThisMonth }, status: "Delivered" },
+      },
+      { $group: { _id: null, total: { $sum: "$totalPrice" } } },
+    ]),
+
+    Order.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startOfLastMonth, $lt: startOfThisMonth },
+          status: "Delivered",
+        },
+      },
       { $group: { _id: null, total: { $sum: "$totalPrice" } } },
     ]),
   ]);
 
-  const totalRevenue = revenueData.length > 0 ? revenueData[0].total : 0;
-  console.log([userCount, productCount, orderCount, revenueData]);
+  const currentMonthRevenue = thisMonthRevData[0]?.total || 0;
+  const lastMonthRevenue = lastMonthRevData[0]?.total || 0;
+
+  // 2. (Orders)
+  const currentMonthOrders = await Order.countDocuments({
+    createdAt: { $gte: startOfThisMonth },
+  });
+
+  const pendingOrder = await Order.countDocuments({ status: "Pending" });
+
+  const lastMonthOrders = await Order.countDocuments({
+    createdAt: { $gte: startOfLastMonth, $lt: startOfThisMonth },
+  });
+
+  // 3. (Users)
+  const currentMonthUsers = await User.countDocuments({
+    createdAt: { $gte: startOfThisMonth },
+  });
+
+  const lastMonthUsers = await User.countDocuments({
+    createdAt: { $gte: startOfLastMonth, $lt: startOfThisMonth },
+  });
+
+  // (Total All-time)
+  const totalRevenueData = await Order.aggregate([
+    { $match: { status: "Delivered" } },
+    { $group: { _id: null, total: { $sum: "$totalPrice" } } },
+  ]);
+
+  // 1. (Weekly Sales Data)
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+  sevenDaysAgo.setHours(0, 0, 0, 0);
+
+  // 2. (Weekly Sales Data)
+  const rawWeeklySales = await Order.aggregate([
+    {
+      $match: {
+        createdAt: { $gte: sevenDaysAgo },
+        status: "Delivered",
+      },
+    },
+    {
+      $group: {
+        _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+        revenue: { $sum: "$totalPrice" },
+      },
+    },
+    { $sort: { _id: 1 } },
+  ]);
+
+  // 3. Zero-Filling
+  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const weeklySales = [];
+
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dateKey = d.toISOString().split("T")[0]; //YYYY-MM-DD
+    const dayName = dayNames[d.getDay()];
+
+    const existingData = rawWeeklySales.find((item) => item._id === dateKey);
+
+    weeklySales.push({
+      day: dayName,
+      date: dateKey,
+      revenue: existingData ? existingData.revenue : 0,
+    });
+  }
+
   res.status(200).json({
-    status: Success,
+    status: "success",
     data: {
-      users: userCount,
-      products: productCount,
-      orders: orderCount,
-      revenue: totalRevenue,
+      totalRevenue: totalRevenueData[0]?.total || 0,
+      totalOrders: await Order.countDocuments(),
+      totalUsers: await User.countDocuments(),
+      totalProducts: await Product.countDocuments(),
+      pendingOrders: await Order.countDocuments({ status: "Pending" }),
+      currentMonthRevenue,
+      lastMonthRevenue,
+      currentMonthOrders,
+      lastMonthOrders,
+      currentMonthUsers,
+      lastMonthUsers,
+      weeklySales,
     },
   });
-});
+};
 
 //  User List for Admin
 const users = Meddle(async (req, res, next) => {
@@ -183,4 +302,11 @@ const UpdateUserRole = Meddle(async (req, res, next) => {
   });
 });
 
-module.exports = { getAdminStats, users, UpdateUserRole, getUser, deleteUser };
+module.exports = {
+  // getAdminStats,
+  users,
+  UpdateUserRole,
+  getUser,
+  deleteUser,
+  getDashboardStats,
+};

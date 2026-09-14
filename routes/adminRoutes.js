@@ -1,6 +1,5 @@
 const express = require("express");
 const adminRoute = express.Router();
-const { getAdminStats } = require("../controllers/adminController");
 const allowedRoles = require("../middlewares/allowedRoles");
 const verifyToken = require("../middlewares/verifyToken");
 const { ADMIN, MANAGER } = require("../utils/role");
@@ -9,9 +8,11 @@ const {
   UpdateUserRole,
   getUser,
   deleteUser,
+  getDashboardStats,
 } = require("../controllers/adminController");
 adminRoute.use(verifyToken, allowedRoles(ADMIN, MANAGER));
-adminRoute.get("/stats", getAdminStats);
+// adminRoute.get("/stats", getAdminStats);
+adminRoute.get("/dashboard", getDashboardStats);
 adminRoute.get("/users", users);
 adminRoute
   .route("/users/:userId")

@@ -1,6 +1,6 @@
 const express = require("express");
 const verifyToken = require("../middlewares/verifyToken");
-const { USER, ADMIN, MANAGER } = require("../utils/role");
+const { ADMIN, MANAGER } = require("../utils/role");
 const allowedRoles = require("../middlewares/allowedRoles");
 const {
   deleteProduct,
@@ -10,7 +10,7 @@ const {
   getAllProducts,
 } = require("../controllers/productController");
 
-const upload = require("../middlewares/multer");
+const { upload } = require("../middlewares/multer");
 
 const productRoutes = express.Router();
 // verifyToken,
@@ -20,7 +20,7 @@ productRoutes
   .post(
     verifyToken,
     allowedRoles(ADMIN, MANAGER),
-    upload.single("photo"),
+    upload.array("images", 4),
     addProduct,
   );
 
@@ -30,7 +30,7 @@ productRoutes
   .patch(
     verifyToken,
     allowedRoles(ADMIN, MANAGER),
-    upload.single("photo"),
+    upload.array("images", 4),
     updateProduct,
   )
   .delete(verifyToken, allowedRoles(MANAGER, ADMIN), deleteProduct);

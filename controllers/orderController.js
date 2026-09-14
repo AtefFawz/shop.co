@@ -63,12 +63,24 @@ const createOrder = Meddle(async (req, res, next) => {
     });
   }
 
+  const stockOperations = orderItems.map((item) => ({
+    updateOne: {
+      filter: { _id: item.product, countInStock: { $gte: item.quantity } },
+      update: { $inc: { countInStock: -item.quantity } },
+    },
+  }));
+  console.log(stockOperations);
+  await productSchema.bulkWrite(stockOperations);
   const newOrder = await Order.create({
     user: userId,
     orderItems: formattedOrderItems,
     shippingAddress,
     totalPrice: calculatedTotalPrice,
   });
+
+  //============================
+
+  //==============================
 
   // NOTIFICATION FOR ADMIN
   const user = await User.findById(userId)
@@ -87,8 +99,9 @@ const createOrder = Meddle(async (req, res, next) => {
     type: "Order",
     order: newOrder._id,
   });
-  console.log("notification Order ->", notification);
+  //   console.log("notification Order ->", notification);
   const io = getIO();
+  console.log("product schema: ", newOrder);
 
   io.to("admin").emit("new_notification", notification);
   res.status(201).json({

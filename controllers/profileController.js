@@ -18,6 +18,7 @@ const getMe = Meddle(async (req, res, next) => {
   const result = await User.findById(userId).lean({ virtuals: true });
 
   if (!result) {
+    
     return next(appError.create("user not found", Fail, 404));
   }
 

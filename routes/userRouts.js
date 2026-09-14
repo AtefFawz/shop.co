@@ -8,7 +8,7 @@ const {
 } = require("../controllers/userController");
 const verifyToken = require("../middlewares/verifyToken");
 const allowedRoles = require("../middlewares/allowedRoles");
-const upload = require("../middlewares/multer");
+const { upload } = require("../middlewares/multer");
 
 userRouts.post("/signup", upload.single("avatar"), signUp);
 userRouts.post("/signin", signIn);

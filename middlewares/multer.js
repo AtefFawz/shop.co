@@ -32,4 +32,17 @@ const upload = multer({
   fileFilter,
 });
 
-module.exports = upload;
+const getCloudinaryPublicId = (imageUrl) => {
+  if (!imageUrl || typeof imageUrl !== "string") return null;
+
+  if (!imageUrl.startsWith("http")) {
+    return imageUrl.replace(/\.[^/.]+$/, "");
+  }
+
+  const regex = /\/upload\/(?:v\d+\/)?(.+)\.[a-zA-Z0-9]+$/;
+  const match = imageUrl.match(regex);
+
+  return match ? match[1] : null;
+};
+
+module.exports = { upload, getCloudinaryPublicId, cloudinary };

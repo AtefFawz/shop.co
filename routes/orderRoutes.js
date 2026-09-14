@@ -3,7 +3,7 @@ const orderRouter = express.Router();
 const {
   createOrder,
   getOrders,
-  getOrder,
+  //   getOrder,
   updateOrderStatus,
   deleteOrder,
   getOrderById,
