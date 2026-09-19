@@ -130,6 +130,33 @@ const signIn = Meddle(async (req, res, next) => {
   });
 });
 
+// Google Auth Callback Controller
+const googleCallback = Meddle(async (req, res, next) => {
+  const user = req.user;
+  if (!user) {
+    return next(appError.create("Google authentication failed", Fail, 401));
+  }
+
+  const { accessToken, refreshToken } = generateTokens(user);
+
+  res.cookie("refreshToken", refreshToken, setCookieOptions());
+
+  res.cookie("token", accessToken, {
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
+    path: "/",
+  });
+
+  res.cookie("role", user.role, {
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
+    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    path: "/",
+  });
+
+  const frontendURL = process.env.CLIENT_URL;
+  return res.redirect(`${frontendURL}/`);
+});
 // Refresh Token Process
 const refreshToken = Meddle(async (req, res, next) => {
   const token = req.cookies?.refreshToken;
@@ -187,4 +214,5 @@ module.exports = {
   signIn,
   refreshToken,
   logout,
+  googleCallback,
 };

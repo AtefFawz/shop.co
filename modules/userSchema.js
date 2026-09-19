@@ -17,17 +17,30 @@ const userSchema = new mongoose.Schema(
 
       validate: [validator.isEmail, "This email is not valid"],
     },
+
     password: {
       type: String,
-      required: [true, "Password is required"],
+      required: [
+        function () {
+          return !this.googleId;
+        },
+        "Password is required",
+      ],
       trim: true,
       select: false,
     },
+
     token: { type: String },
+
     role: {
       type: String,
       enum: [USER, ADMIN, MANAGER],
       default: USER,
+    },
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true,
     },
     avatar: {
       type: String,
@@ -53,16 +66,13 @@ userSchema.virtual("reviews", {
   foreignField: "user",
 });
 
-userSchema.set(
-  "toJSON",
-  { virtuals: true },
-  {
-    transform: (doc, ret) => {
-      delete ret.__v;
-      delete ret.password;
-      return ret;
-    },
+userSchema.set("toJSON", {
+  virtuals: true,
+  transform: (doc, ret) => {
+    delete ret.__v;
+    delete ret.password;
+    return ret;
   },
-);
+});
 userSchema.set("toObject", { virtuals: true });
 module.exports = mongoose.model("user", userSchema);

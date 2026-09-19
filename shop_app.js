@@ -1,5 +1,6 @@
 require("dotenv").config();
-
+const passport = require("passport");
+require("./config/passport");
 const express = require("express");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
@@ -49,6 +50,7 @@ const corsOptions = {
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors(corsOptions));
+app.use(passport.initialize());
 
 /* Database Connection */
 // app.use(async (req, res, next) => {
