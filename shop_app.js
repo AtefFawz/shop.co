@@ -2,6 +2,7 @@ require("dotenv").config();
 const passport = require("passport");
 require("./config/passport");
 const express = require("express");
+const serverless = require("serverless-http");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
 const http = require("http");
@@ -122,12 +123,20 @@ socketConnection(io);
 /* Set Socket.IO Instance */
 setIO(io);
 
-const PORT = process.env.PORT || 4000;
-
-connectDB().then(() => {
-  server.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on port ${PORT}`);
+if (process.env.NODE_ENV !== "production") {
+  const PORT = process.env.PORT || 4000;
+  connectDB().then(() => {
+    server.listen(PORT, () => {
+      console.log(`Server running locally on port ${PORT}`);
+    });
   });
-});
+}
 
 module.exports = app;
+module.exports.handler = serverless(app);
+
+// connectDB().then(() => {
+//   server.listen(PORT, "0.0.0.0", () => {
+//     console.log(`Server running on port ${PORT}`);
+//   });
+// });
