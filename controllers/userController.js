@@ -142,15 +142,14 @@ const googleCallback = Meddle(async (req, res, next) => {
   res.cookie("refreshToken", refreshToken, setCookieOptions());
 
   res.cookie("token", accessToken, {
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
+    secure: true,
+    sameSite: "None",
     path: "/",
   });
 
   res.cookie("role", user.role, {
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
-    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    secure: true,
+    sameSite: "None",
     path: "/",
   });
 
