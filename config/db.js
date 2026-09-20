@@ -26,18 +26,38 @@
 // module.exports = connectDB;
 const mongoose = require("mongoose");
 
-const connectDB = async () => {
-  try {
-    const conn = await mongoose.connect(process.env.URL, {
-      serverSelectionTimeoutMS: 5000,
-      maxPoolSize: 50,
-    });
+let cached = global.mongoose;
 
-    console.log(`Database connected successfully: ${conn.connection.host}`);
-  } catch (err) {
-    console.error("Database Connection Failed:", err.message);
-    process.exit(1);
+if (!cached) {
+  cached = global.mongoose = { conn: null, promise: null };
+}
+
+const connectDB = async () => {
+  if (cached.conn) {
+    return cached.conn;
   }
+
+  if (!cached.promise) {
+    const opts = {
+      bufferCommands: false,
+      serverSelectionTimeoutMS: 5000,
+    };
+
+    cached.promise = mongoose
+      .connect(process.env.URL, opts)
+      .then((mongoose) => {
+        return mongoose;
+      });
+  }
+
+  try {
+    cached.conn = await cached.promise;
+  } catch (e) {
+    cached.promise = null;
+    throw e;
+  }
+
+  return cached.conn;
 };
 
 module.exports = connectDB;

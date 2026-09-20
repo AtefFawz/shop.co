@@ -54,20 +54,19 @@ app.use(cors(corsOptions));
 app.use(passport.initialize());
 
 /* Database Connection */
-// app.use(async (req, res, next) => {
-//   try {
-//     await connectDB();
-//     next();
-//   } catch (err) {
-//     console.error("Database connection error:", err);
-
-//     res.status(500).json({
-//       status: "Error",
-//       message: "Database Connection Error",
-//       code: 500,
-//     });
-//   }
-// });
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error("Database connection error:", err);
+    res.status(500).json({
+      status: "Error",
+      message: "Database Connection Error",
+      code: 500,
+    });
+  }
+});
 
 /* Routes */
 app.use("/api/product", productRoutes);
