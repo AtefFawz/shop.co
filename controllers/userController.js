@@ -141,18 +141,22 @@ const googleCallback = Meddle(async (req, res, next) => {
 
   res.cookie("refreshToken", refreshToken, setCookieOptions());
 
+  const isProduction = process.env.NODE_ENV === "production";
+
+  res.cookie("refreshToken", refreshToken, setCookieOptions());
+
   res.cookie("token", accessToken, {
-    secure: true,
-    sameSite: "None",
+    httpOnly: false,
+    secure: isProduction,
+    sameSite: isProduction ? "None" : "Lax",
     path: "/",
   });
 
   res.cookie("role", user.role, {
-    secure: true,
-    sameSite: "None",
+    secure: isProduction,
+    sameSite: isProduction ? "None" : "Lax",
     path: "/",
   });
-
   const frontendURL = process.env.CLIENT_URL;
   return res.redirect(`${frontendURL}/`);
 });
