@@ -217,6 +217,7 @@ const getOrders = Meddle(async (req, res, next) => {
 // Delete Order
 const deleteOrder = Meddle(async (req, res, next) => {
   const { id } = req.params;
+
   if (!id || !mongoose.Types.ObjectId.isValid(id)) {
     return next(appError.create("Invalid order ID", Fail, 400));
   }
@@ -227,20 +228,25 @@ const deleteOrder = Meddle(async (req, res, next) => {
   }
 
   const roleUser = req.currentUser?.role;
-  if (roleUser !== ADMIN && roleUser !== MANAGER) {
-    return next(
-      appError.create("Forbidden: Only admins can delete orders", Fail, 403),
-    );
+  const isAdmin = roleUser === ADMIN || roleUser === MANAGER;
+
+  const queryFilter = { _id: id };
+  if (!isAdmin) {
+    queryFilter.user = userId;
   }
-  const deletedOrder = await Order.findByIdAndDelete(id);
+
+  const deletedOrder = await Order.findOneAndDelete(queryFilter);
 
   if (!deletedOrder) {
-    return next(appError.create("Order not found", Fail, 404));
+    return next(
+      appError.create("Order not found or unauthorized to delete", Fail, 404),
+    );
   }
 
-  res
-    .status(200)
-    .json({ status: Success, message: "Order deleted successfully" });
+  res.status(200).json({
+    status: Success,
+    message: "Order deleted successfully",
+  });
 });
 
 // Get Single Order
