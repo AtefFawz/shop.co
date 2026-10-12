@@ -1,12 +1,12 @@
-const mongoose = require("mongoose");
-const Meddle = require("../middlewares/meddle");
-const User = require("../modules/userSchema");
-const Order = require("../modules/orderSchema");
-const Review = require("../modules/reviewsSchema");
-const appError = require("../utils/appError");
-const { Success, Fail } = require("../utils/httpText");
+import mongoose from "mongoose";
+import Wrapper from "../middlewares/wrapper.js";
+import User from "../modules/authSchema.js";
+import Order from "../modules/orderSchema.js";
+import Review from "../modules/reviewsSchema.js";
+import appError from "../utils/appError.js";
+import { Success, Fail } from "../utils/httpText.js";
 
-const getMe = Meddle(async (req, res, next) => {
+const getMe = Wrapper(async (req, res, next) => {
   const userId = req.currentUser?._id || req.currentUser?.id;
 
   if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
@@ -31,7 +31,7 @@ const getMe = Meddle(async (req, res, next) => {
 
 // controllers/orderController.js
 
-const getMyOrders = Meddle(async (req, res, next) => {
+const getMyOrders = Wrapper(async (req, res, next) => {
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
   const limit = Math.max(1, parseInt(req.query.limit, 10) || 10);
   const skip = (page - 1) * limit;
@@ -77,7 +77,7 @@ const getMyOrders = Meddle(async (req, res, next) => {
   });
 });
 
-const getMyReviews = Meddle(async (req, res, next) => {
+const getMyReviews = Wrapper(async (req, res, next) => {
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
   const limit = Math.max(1, parseInt(req.query.limit, 10) || 10);
   const skip = (page - 1) * limit;
@@ -113,7 +113,7 @@ const getMyReviews = Meddle(async (req, res, next) => {
   });
 });
 
-const updateUser = Meddle(async (req, res, next) => {
+const updateUser = Wrapper(async (req, res, next) => {
   const currentUserId = req.currentUser?._id || req.currentUser?.id;
 
   if (!currentUserId || !mongoose.Types.ObjectId.isValid(currentUserId)) {
@@ -153,4 +153,4 @@ const updateUser = Meddle(async (req, res, next) => {
   });
 });
 
-module.exports = { getMe, updateUser, getMyOrders, getMyReviews };
+export { getMe, updateUser, getMyOrders, getMyReviews };

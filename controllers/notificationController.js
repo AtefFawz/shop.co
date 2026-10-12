@@ -1,12 +1,12 @@
-const Meddle = require("../middlewares/meddle");
-const appError = require("../utils/appError");
-const mongoose = require("mongoose");
-const { Success, Fail, Error } = require("../utils/httpText");
-const { USER, ADMIN } = require("../utils/role");
-const Notification = require("../modules/notificationSchema");
+import Wrapper from "../middlewares/wrapper.js";
+import mongoose from "mongoose";
+import appError from "../utils/appError.js";
+import { Success, Fail, Error } from "../utils/httpText.js";
+import { USER, ADMIN } from "../utils/role.js";
+import Notification from "../modules/notificationSchema.js";
 
 // --> Get All Notifications
-const getNotifications = Meddle(async (req, res, next) => {
+const getNotifications = Wrapper(async (req, res, next) => {
   const userId = req.currentUser?._id || req.currentUser?.id;
 
   const query = req.query;
@@ -49,7 +49,7 @@ const getNotifications = Meddle(async (req, res, next) => {
   });
 });
 
-const markAsRead = Meddle(async (req, res, next) => {
+const markAsRead = Wrapper(async (req, res, next) => {
   const userId = req.currentUser?._id || req.currentUser?.id;
   const { id } = req.params;
 
@@ -89,7 +89,7 @@ const markAsRead = Meddle(async (req, res, next) => {
   });
 });
 
-const readAll = Meddle(async (req, res, next) => {
+const readAll = Wrapper(async (req, res, next) => {
   const userId = req.currentUser?._id || req.currentUser?.id;
 
   if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
@@ -109,4 +109,4 @@ const readAll = Meddle(async (req, res, next) => {
   });
 });
 
-module.exports = { getNotifications, markAsRead, readAll };
+export { getNotifications, markAsRead, readAll };

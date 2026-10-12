@@ -1,7 +1,7 @@
-const passport = require("passport");
-const GoogleStrategy = require("passport-google-oauth20").Strategy;
-const UserSchema = require("../modules/userSchema");
-const { USER } = require("../utils/role");
+import passport from "passport";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
+import authSchema from "../modules/authSchema.js";
+import { USER } from "../utils/role.js";
 
 passport.use(
   new GoogleStrategy(
@@ -12,10 +12,10 @@ passport.use(
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
-        let user = await UserSchema.findOne({ googleId: profile.id });
+        let user = await authSchema.findOne({ googleId: profile.id });
         if (user) return done(null, user);
 
-        user = await UserSchema.findOne({ email: profile.emails[0].value });
+        user = await authSchema.findOne({ email: profile.emails[0].value });
         if (user) {
           user.googleId = profile.id;
           if (!user.avatar && profile.photos && profile.photos[0]) {
@@ -25,7 +25,7 @@ passport.use(
           return done(null, user);
         }
 
-        user = await UserSchema.create({
+        user = await authSchema.create({
           fullName: profile.displayName,
           email: profile.emails[0].value,
           googleId: profile.id,
@@ -43,3 +43,4 @@ passport.use(
     },
   ),
 );
+export default passport;

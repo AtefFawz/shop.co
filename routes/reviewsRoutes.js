@@ -1,12 +1,12 @@
-const express = require("express");
-const verifyToken = require("../middlewares/verifyToken");
+import express from "express";
+import verifyToken from "../middlewares/verifyToken.js";
 const reviewsRouter = express.Router();
-const {
+import {
   addReview,
   getAllReviews,
   deleteReview,
   // getReviewById,
-} = require("../controllers/reviewsController");
+} from "../controllers/reviewsController.js";
 // Check if the user is authenticated before allowing access to review routes
 reviewsRouter.use(verifyToken);
 
@@ -23,4 +23,4 @@ reviewsRouter.delete("/delete/:id", deleteReview);
 reviewsRouter.get("/", getAllReviews);
 
 // Additional routes for reviews can be added here (e.g., get reviews, delete review, etc.)
-module.exports = { reviewsRouter };
+export { reviewsRouter };

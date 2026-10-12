@@ -1,12 +1,12 @@
-const Meddle = require("../middlewares/meddle");
-const appError = require("../utils/appError");
-const reviews = require("../modules/reviewsSchema");
-const { Fail } = require("../utils/httpText");
-const { ADMIN } = require("../utils/role");
+import Wrapper from "../middlewares/wrapper.js";
+import appError from "../utils/appError.js";
+import reviews from "../modules/reviewsSchema.js";
+import { Fail } from "../utils/httpText.js";
+import { ADMIN } from "../utils/role.js";
 
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
-const getAllReviews = Meddle(async (req, res, next) => {
+const getAllReviews = Wrapper(async (req, res, next) => {
   const query = req.query || {};
   const reviewId = query.product ? { product: query.product } : {};
 
@@ -39,7 +39,7 @@ const getAllReviews = Meddle(async (req, res, next) => {
   });
 });
 
-const addReview = Meddle(async (req, res, next) => {
+const addReview = Wrapper(async (req, res, next) => {
   const userId = req.currentUser?._id || req.currentUser?.id;
 
   if (!userId) {
@@ -63,7 +63,7 @@ const addReview = Meddle(async (req, res, next) => {
   res.status(201).json({ status: "success", data: { review: newReview } });
 });
 
-const deleteReview = Meddle(async (req, res, next) => {
+const deleteReview = Wrapper(async (req, res, next) => {
   const reviewId = req.params.id;
 
   if (!reviewId || !mongoose.Types.ObjectId.isValid(reviewId)) {
@@ -94,8 +94,4 @@ const deleteReview = Meddle(async (req, res, next) => {
     .json({ status: "success", message: "Review deleted successfully" });
 });
 
-module.exports = {
-  addReview,
-  getAllReviews,
-  deleteReview,
-};
+export { addReview, getAllReviews, deleteReview };

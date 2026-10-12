@@ -1,16 +1,16 @@
-const express = require("express");
-const verifyToken = require("../middlewares/verifyToken");
-const { ADMIN, MANAGER } = require("../utils/role");
-const allowedRoles = require("../middlewares/allowedRoles");
-const {
+import express from "express";
+import verifyToken from "../middlewares/verifyToken.js";
+import { ADMIN, MANAGER } from "../utils/role.js";
+import allowedRoles from "../middlewares/allowedRoles.js";
+import {
   deleteProduct,
   getProduct,
   updateProduct,
   addProduct,
   getAllProducts,
-} = require("../controllers/productController");
+} from "../controllers/productController.js";
 
-const { upload } = require("../middlewares/multer");
+import { upload } from "../middlewares/multer.js";
 
 const productRoutes = express.Router();
 // verifyToken,
@@ -35,4 +35,4 @@ productRoutes
   )
   .delete(verifyToken, allowedRoles(MANAGER, ADMIN), deleteProduct);
 
-module.exports = { productRoutes };
+export { productRoutes };

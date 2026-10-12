@@ -1,11 +1,11 @@
-const mongoose = require("mongoose");
-const Meddle = require("../middlewares/meddle");
-const appError = require("../utils/appError");
-const productSchema = require("../modules/productSchema");
-const reviewsSchema = require("../modules/reviewsSchema");
-const { Success, Error, Fail } = require("../utils/httpText");
-const { cloudinary, getCloudinaryPublicId } = require("../middlewares/multer");
-const getAllProducts = Meddle(async (req, res, next) => {
+import mongoose from "mongoose";
+import Wrapper from "../middlewares/wrapper.js";
+import appError from "../utils/appError.js";
+import productSchema from "../modules/productSchema.js";
+import reviewsSchema from "../modules/reviewsSchema.js";
+import { Success, Error, Fail } from "../utils/httpText.js";
+import { cloudinary, getCloudinaryPublicId } from "../middlewares/multer.js";
+const getAllProducts = Wrapper(async (req, res, next) => {
   const { keyword } = req.query;
   let filter = {};
   if (keyword) {
@@ -51,7 +51,7 @@ const getAllProducts = Meddle(async (req, res, next) => {
   });
 });
 
-const getProduct = Meddle(async (req, res, next) => {
+const getProduct = Wrapper(async (req, res, next) => {
   const productId = req.params.productId;
   if (!productId || !mongoose.Types.ObjectId.isValid(productId)) {
     return next(appError.create("Invalid product ID", Fail, 400));
@@ -78,7 +78,7 @@ const getProduct = Meddle(async (req, res, next) => {
   });
 });
 
-const addProduct = Meddle(async (req, res, next) => {
+const addProduct = Wrapper(async (req, res, next) => {
   const {
     name,
     description,
@@ -130,7 +130,7 @@ const addProduct = Meddle(async (req, res, next) => {
   });
 });
 
-const updateProduct = Meddle(async (req, res, next) => {
+const updateProduct = Wrapper(async (req, res, next) => {
   const productId = req.params.productId;
 
   if (!productId || !mongoose.Types.ObjectId.isValid(productId)) {
@@ -193,7 +193,7 @@ const updateProduct = Meddle(async (req, res, next) => {
   res.status(200).json({ status: Success, data: { Product: updatedProduct } });
 });
 
-const deleteProduct = Meddle(async (req, res, next) => {
+const deleteProduct = Wrapper(async (req, res, next) => {
   const { productId } = req.params;
 
   if (!productId || !mongoose.Types.ObjectId.isValid(productId)) {
@@ -236,10 +236,4 @@ const deleteProduct = Meddle(async (req, res, next) => {
   });
 });
 
-module.exports = {
-  getAllProducts,
-  getProduct,
-  updateProduct,
-  deleteProduct,
-  addProduct,
-};
+export { getAllProducts, getProduct, updateProduct, deleteProduct, addProduct };

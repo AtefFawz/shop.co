@@ -1,6 +1,6 @@
-const jwt = require("jsonwebtoken");
-const appError = require("../utils/appError");
-const { Fail } = require("../utils/httpText");
+import jwt from "jsonwebtoken";
+import appError from "../utils/appError.js";
+import { Fail } from "../utils/httpText.js";
 
 const verifyToken = (req, res, next) => {
   // 1- Get the "Authorization" header from the request
@@ -34,4 +34,4 @@ const verifyToken = (req, res, next) => {
   }
 };
 
-module.exports = verifyToken;
+export default verifyToken;

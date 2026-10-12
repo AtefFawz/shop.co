@@ -1,8 +1,8 @@
-const multer = require("multer");
-const cloudinary = require("cloudinary").v2;
-const { CloudinaryStorage } = require("multer-storage-cloudinary");
-const appError = require("../utils/appError");
-const { Fail } = require("../utils/httpText");
+import multer from "multer";
+import { v2 as cloudinary } from "cloudinary";
+import { CloudinaryStorage } from "multer-storage-cloudinary";
+import appError from "../utils/appError.js";
+import { Fail } from "../utils/httpText.js";
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -45,4 +45,4 @@ const getCloudinaryPublicId = (imageUrl) => {
   return match ? match[1] : null;
 };
 
-module.exports = { upload, getCloudinaryPublicId, cloudinary };
+export { upload, getCloudinaryPublicId, cloudinary };

@@ -1,15 +1,15 @@
-const mongoose = require("mongoose");
-const { Success, Fail } = require("../utils/httpText");
-const Order = require("../modules/orderSchema");
-const Notification = require("../modules/notificationSchema");
-const User = require("../modules/userSchema");
-const Meddle = require("../middlewares/meddle");
-const appError = require("../utils/appError");
-const productSchema = require("../modules/productSchema");
-const { ADMIN, MANAGER, USER } = require("../utils/role");
-const { getIO } = require("../utils/socket");
+import mongoose from "mongoose";
+import { Success, Fail } from "../utils/httpText.js";
+import Order from "../modules/orderSchema.js";
+import Notification from "../modules/notificationSchema.js";
+import User from "../modules/authSchema.js";
+import Wrapper from "../middlewares/wrapper.js";
+import appError from "../utils/appError.js";
+import productSchema from "../modules/productSchema.js";
+import { ADMIN, MANAGER, USER } from "../utils/role.js";
+import { getIO } from "../utils/socket.js";
 
-const createOrder = Meddle(async (req, res, next) => {
+const createOrder = Wrapper(async (req, res, next) => {
   const userId = req.currentUser?._id || req.currentUser?.id;
 
   if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
@@ -110,7 +110,7 @@ const createOrder = Meddle(async (req, res, next) => {
   });
 });
 
-// const getOrder = Meddle(async (req, res, next) => {
+// const getOrder = Wrapper(async (req, res, next) => {
 //   const userId = req.currentUser?._id || req.currentUser?.id;
 //   if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
 //     return next(
@@ -131,7 +131,7 @@ const createOrder = Meddle(async (req, res, next) => {
 // });
 
 // Update Order Status
-const updateOrderStatus = Meddle(async (req, res, next) => {
+const updateOrderStatus = Wrapper(async (req, res, next) => {
   const { status } = req.body;
 
   // Check id current user
@@ -181,7 +181,7 @@ const updateOrderStatus = Meddle(async (req, res, next) => {
   res.status(200).json({ status: Success, data: { order: updatedOrder } });
 });
 
-const getOrders = Meddle(async (req, res, next) => {
+const getOrders = Wrapper(async (req, res, next) => {
   const userId = req.currentUser?._id || req.currentUser?.id;
   if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
     return next(appError.create("Unauthorized: Please login first", Fail, 401));
@@ -215,7 +215,7 @@ const getOrders = Meddle(async (req, res, next) => {
 });
 
 // Delete Order
-const deleteOrder = Meddle(async (req, res, next) => {
+const deleteOrder = Wrapper(async (req, res, next) => {
   const { id } = req.params;
 
   if (!id || !mongoose.Types.ObjectId.isValid(id)) {
@@ -250,7 +250,7 @@ const deleteOrder = Meddle(async (req, res, next) => {
 });
 
 // Get Single Order
-const getOrderById = Meddle(async (req, res, next) => {
+const getOrderById = Wrapper(async (req, res, next) => {
   const { id } = req.params;
 
   const userId = req.currentUser?._id || req.currentUser?.id;
@@ -292,7 +292,7 @@ const getOrderById = Meddle(async (req, res, next) => {
   });
 });
 
-module.exports = {
+export {
   createOrder,
   // getOrder,
   getOrders,

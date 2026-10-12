@@ -1,32 +1,31 @@
-require("dotenv").config();
-const passport = require("passport");
-require("./config/passport");
-const express = require("express");
-const serverless = require("serverless-http");
-const cookieParser = require("cookie-parser");
-const cors = require("cors");
-const http = require("http");
-const { Server } = require("socket.io");
-const { socketConnection } = require("./sockets/index");
+import "dotenv/config";
+import "./config/passport.js";
+import passport from "./config/passport.js";
+import express from "express";
+import serverless from "serverless-http";
+import cookieParser from "cookie-parser";
+import cors from "cors";
+import http from "http";
+import { Server } from "socket.io";
+import { socketConnection } from "./sockets/index.js";
 
 // Config
-const connectDB = require("./config/db");
+import connectDB from "./config/db.js";
 
 // Socket
-const { socketHandler } = require("./middlewares/socketHandler");
-const { setIO } = require("./utils/socket");
+import { socketHandler } from "./middlewares/socketHandler.js";
+import { setIO } from "./utils/socket.js";
 
 // Routes
-const { productRoutes } = require("./routes/productRoutes");
-const { userRouts } = require("./routes/userRouts");
-const { orderRouter } = require("./routes/orderRoutes");
-const { adminRoute } = require("./routes/adminRoutes");
-const { reviewsRouter } = require("./routes/reviewsRoutes");
-const { profileRouts } = require("./routes/profileRoutes");
-const { notificationRouter } = require("./routes/notificationRoutes");
+import { productRoutes } from "./routes/productRoutes.js";
+import { authRouts } from "./routes/authRouts.js";
+import { orderRouter } from "./routes/orderRoutes.js";
+import { adminRoute } from "./routes/adminRoutes.js";
+import { reviewsRouter } from "./routes/reviewsRoutes.js";
+import { profileRouts } from "./routes/profileRoutes.js";
+import { notificationRouter } from "./routes/notificationRoutes.js";
 
 // Utils
-// const { Error } = require("./utils/httpText");
 
 const app = express();
 
@@ -70,7 +69,7 @@ app.use(async (req, res, next) => {
 
 /* Routes */
 app.use("/api/product", productRoutes);
-app.use("/api/auth", userRouts);
+app.use("/api/auth", authRouts);
 app.use("/api/order", orderRouter);
 app.use("/api/admin", adminRoute);
 app.use("/api/review", reviewsRouter);
@@ -131,8 +130,8 @@ if (process.env.NODE_ENV !== "production") {
   });
 }
 
-module.exports = app;
-module.exports.handler = serverless(app);
+export default app;
+export const handler = serverless(app);
 
 // connectDB().then(() => {
 //   server.listen(PORT, "0.0.0.0", () => {

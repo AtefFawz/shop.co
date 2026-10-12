@@ -1,7 +1,7 @@
-const mongoose = require("mongoose");
-let validator = require("validator");
-const { USER, ADMIN, MANAGER } = require("../utils/role");
-const userSchema = new mongoose.Schema(
+import mongoose from "mongoose";
+import validator from "validator";
+import { USER, ADMIN, MANAGER } from "../utils/role.js";
+const authSchema = new mongoose.Schema(
   {
     fullName: {
       type: String,
@@ -30,6 +30,9 @@ const userSchema = new mongoose.Schema(
       select: false,
     },
 
+    otpDailyCount: { type: Number, default: 0 },
+    lastOtpRequest: { type: Date, default: null },
+
     token: { type: String },
 
     role: {
@@ -54,19 +57,19 @@ const userSchema = new mongoose.Schema(
     toObject: { virtuals: true },
   },
 );
-userSchema.virtual("orders", {
+authSchema.virtual("orders", {
   ref: "order",
   localField: "_id",
   foreignField: "user",
 });
 
-userSchema.virtual("reviews", {
+authSchema.virtual("reviews", {
   ref: "review",
   localField: "_id",
   foreignField: "user",
 });
 
-userSchema.set("toJSON", {
+authSchema.set("toJSON", {
   virtuals: true,
   transform: (doc, ret) => {
     delete ret.__v;
@@ -74,5 +77,5 @@ userSchema.set("toJSON", {
     return ret;
   },
 });
-userSchema.set("toObject", { virtuals: true });
-module.exports = mongoose.model("user", userSchema);
+authSchema.set("toObject", { virtuals: true });
+export default mongoose.model("user", authSchema);

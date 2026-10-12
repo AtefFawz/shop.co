@@ -1,5 +1,5 @@
-const appError = require("../utils/appError");
-const { Fail } = require("../utils/httpText");
+import appError from "../utils/appError.js";
+import { Fail } from "../utils/httpText.js";
 
 const allowedRoles = (...roles) => {
   return (req, res, next) => {
@@ -21,4 +21,4 @@ const allowedRoles = (...roles) => {
   };
 };
 
-module.exports = allowedRoles;
+export default allowedRoles;

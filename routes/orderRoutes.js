@@ -1,17 +1,17 @@
-const express = require("express");
+import express from "express";
 const orderRouter = express.Router();
-const {
+import {
   createOrder,
   getOrders,
   //   getOrder,
   updateOrderStatus,
   deleteOrder,
   getOrderById,
-} = require("../controllers/orderController");
+} from "../controllers/orderController.js";
 
-const verifyToken = require("../middlewares/verifyToken");
-const allowedRoles = require("../middlewares/allowedRoles");
-const { ADMIN } = require("../utils/role");
+import verifyToken from "../middlewares/verifyToken.js";
+import allowedRoles from "../middlewares/allowedRoles.js";
+import { ADMIN } from "../utils/role.js";
 
 orderRouter.use(verifyToken);
 
@@ -26,4 +26,4 @@ orderRouter
 orderRouter.route("/").post(createOrder);
 // .get(getOrder);
 
-module.exports = { orderRouter };
+export { orderRouter };

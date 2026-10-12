@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const reviewSchema = new mongoose.Schema(
   {
@@ -61,4 +61,4 @@ reviewSchema.post(/^findOneAnd/, async function (doc) {
     await doc.constructor.calcAverageRatings(doc.product);
   }
 });
-module.exports = mongoose.model("review", reviewSchema);
+export default mongoose.model("review", reviewSchema);

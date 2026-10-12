@@ -1,15 +1,15 @@
-const express = require("express");
+import express from "express";
 const adminRoute = express.Router();
-const allowedRoles = require("../middlewares/allowedRoles");
-const verifyToken = require("../middlewares/verifyToken");
-const { ADMIN, MANAGER } = require("../utils/role");
-const {
+import allowedRoles from "../middlewares/allowedRoles.js";
+import verifyToken from "../middlewares/verifyToken.js";
+import { ADMIN, MANAGER } from "../utils/role.js";
+import {
   users,
   UpdateUserRole,
   getUser,
   deleteUser,
   getDashboardStats,
-} = require("../controllers/adminController");
+} from "../controllers/adminController.js";
 adminRoute.use(verifyToken, allowedRoles(ADMIN, MANAGER));
 // adminRoute.get("/stats", getAdminStats);
 adminRoute.get("/dashboard", getDashboardStats);
@@ -20,4 +20,4 @@ adminRoute
   .delete(allowedRoles(ADMIN), deleteUser)
   .patch(allowedRoles(ADMIN), UpdateUserRole);
 
-module.exports = { adminRoute };
+export { adminRoute };

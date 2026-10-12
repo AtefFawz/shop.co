@@ -12,7 +12,4 @@ const getIO = () => {
   return io;
 };
 
-module.exports = {
-  setIO,
-  getIO,
-};
+export { setIO, getIO };

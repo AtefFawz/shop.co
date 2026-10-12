@@ -1,5 +1,5 @@
-const mongoose = require("mongoose");
-const { USER, ADMIN } = require("../utils/role");
+import mongoose from "mongoose";
+import { USER, ADMIN } from "../utils/role.js";
 
 const notificationSchema = new mongoose.Schema(
   {
@@ -50,4 +50,4 @@ const notificationSchema = new mongoose.Schema(
   },
 );
 
-module.exports = mongoose.model("notification", notificationSchema);
+export default mongoose.model("notification", notificationSchema);

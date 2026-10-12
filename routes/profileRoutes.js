@@ -1,12 +1,12 @@
-const express = require("express");
-const {
+import express from "express";
+import {
   getMe,
   updateUser,
   getMyOrders,
   getMyReviews,
-} = require("../controllers/profileController");
-const verifyToken = require("../middlewares/verifyToken");
-const { upload } = require("../middlewares/multer");
+} from "../controllers/profileController.js";
+import verifyToken from "../middlewares/verifyToken.js";
+import { upload } from "../middlewares/multer.js";
 const profileRouts = express.Router();
 profileRouts.use(verifyToken);
 profileRouts.get("/me", getMe);
@@ -14,4 +14,4 @@ profileRouts.get("/my-orders", getMyOrders);
 profileRouts.get("/my-reviews", getMyReviews);
 profileRouts.patch("/me/update", upload.single("avatar"), updateUser);
 
-module.exports = { profileRouts };
+export { profileRouts };

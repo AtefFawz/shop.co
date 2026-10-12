@@ -1,13 +1,13 @@
-const mongoose = require("mongoose");
-const User = require("../modules/userSchema");
-const Product = require("../modules/productSchema");
-const Order = require("../modules/orderSchema");
-const Meddle = require("../middlewares/meddle");
-const appError = require("../utils/appError");
-const { Fail, Success } = require("../utils/httpText");
-const { USER, MANAGER, ADMIN } = require("../utils/role");
+import mongoose from "mongoose";
+import User from "../modules/authSchema.js";
+import Product from "../modules/productSchema.js";
+import Order from "../modules/orderSchema.js";
+import Wrapper from "../middlewares/wrapper.js";
+import appError from "../utils/appError.js";
+import { Fail, Success } from "../utils/httpText.js";
+import { USER, MANAGER, ADMIN } from "../utils/role.js";
 
-// const getAdminStats = Meddle(async (req, res, next) => {
+// const getAdminStats = Wrapper(async (req, res, next) => {
 //   const [userCount, productCount, orderCount, revenueData] = await Promise.all([
 //     User.countDocuments(),
 //     Product.countDocuments(),
@@ -152,7 +152,7 @@ const getDashboardStats = async (req, res) => {
 };
 
 //  User List for Admin
-const users = Meddle(async (req, res, next) => {
+const users = Wrapper(async (req, res, next) => {
   // Pagination parameters
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
@@ -182,7 +182,7 @@ const users = Meddle(async (req, res, next) => {
 
 // Get User Details for Admin
 
-const getUser = Meddle(async (req, res, next) => {
+const getUser = Wrapper(async (req, res, next) => {
   const { userId } = req.params; // Destructuring userId from req.params
 
   // 1. Validate userId format
@@ -220,7 +220,7 @@ const getUser = Meddle(async (req, res, next) => {
 
 // Delete User (Admin Only) - Optional, not implemented in routes yet
 
-const deleteUser = Meddle(async (req, res, next) => {
+const deleteUser = Wrapper(async (req, res, next) => {
   const { userId } = req.params;
   const currentUser = (req.currentUser?._id || req.currentUser?.id)?.toString();
 
@@ -250,7 +250,7 @@ const deleteUser = Meddle(async (req, res, next) => {
 });
 
 // Update User Role (Admin Only)
-const UpdateUserRole = Meddle(async (req, res, next) => {
+const UpdateUserRole = Wrapper(async (req, res, next) => {
   const userId = req.params.userId;
   const currentUserId = (
     req.currentUser?._id || req.currentUser?.id
@@ -302,7 +302,7 @@ const UpdateUserRole = Meddle(async (req, res, next) => {
   });
 });
 
-module.exports = {
+export {
   // getAdminStats,
   users,
   UpdateUserRole,

@@ -1,17 +1,17 @@
-const express = require("express");
-const verifyToken = require("../middlewares/verifyToken");
-const allowedRoles = require("../middlewares/allowedRoles");
+import express from "express";
+import verifyToken from "../middlewares/verifyToken.js";
+import allowedRoles from "../middlewares/allowedRoles.js";
 const notificationRouter = express.Router();
 
-const {
+import {
   getNotifications,
   markAsRead,
   readAll,
-} = require("../controllers/notificationController");
+} from "../controllers/notificationController.js";
 
 notificationRouter.use(verifyToken);
 notificationRouter.get("/", getNotifications);
 notificationRouter.patch("/readAll", readAll);
 notificationRouter.patch("/:id", markAsRead);
 
-module.exports = { notificationRouter };
+export { notificationRouter };

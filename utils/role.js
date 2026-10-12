@@ -3,5 +3,7 @@ const ROLES = {
   ADMIN: "ADMIN",
   MANAGER: "MANAGER",
 };
-
-module.exports = ROLES;
+const ADMIN = ROLES.ADMIN;
+const USER = ROLES.USER;
+const MANAGER = ROLES.MANAGER;
+export { ADMIN, USER, MANAGER };

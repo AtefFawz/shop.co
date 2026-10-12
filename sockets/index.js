@@ -1,8 +1,9 @@
 // SOCKET CONNECTION
 
-const { ADMIN } = require("../utils/role");
+import { ADMIN } from "../utils/role.js";
 function socketConnection(io) {
   // io.on("connection", (socket) => {
+  console.log(ADMIN);
   // Check is admin
   io.on("connection", (socket) => {
     if (socket.role === ADMIN) {
@@ -16,4 +17,4 @@ function socketConnection(io) {
     });
   });
 }
-module.exports = { socketConnection };
+export { socketConnection };

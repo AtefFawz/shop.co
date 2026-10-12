@@ -1,4 +1,4 @@
-const jwt = require("jsonwebtoken");
+import jwt from "jsonwebtoken";
 const socketHandler = (socket, next) => {
   const token = socket.handshake.auth?.token;
 
@@ -22,4 +22,4 @@ const socketHandler = (socket, next) => {
     return next(new Error("INVALID_TOKEN"));
   }
 };
-module.exports = { socketHandler };
+export { socketHandler };
