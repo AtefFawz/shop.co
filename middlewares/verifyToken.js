@@ -1,36 +1,55 @@
 import jwt from "jsonwebtoken";
+import User from "../models/authSchema.js";
 import appError from "../utils/appError.js";
 import { Fail } from "../utils/httpText.js";
 
-const verifyToken = (req, res, next) => {
-  // 1- Get the "Authorization" header from the request
-  const authHeader =
-    req.headers["Authorization"] || req.headers["authorization"];
-
-  // 2- If no header is found, return an error (Stop here)
-  if (!authHeader) {
-    return next(appError.create("Token is required", Fail, 401));
-  }
-
-  //* Check if the header starts with "Bearer " and extract the token
-  if (!authHeader.startsWith("Bearer ")) {
+const verifyToken = async (req, res, next) => {
+  // Everything behind authentication is per-user data; never let a proxy/CDN cache it.
+  res.setHeader("Cache-Control", "no-store");
+  const authHeader = req.get("authorization");
+  const bearerMatch = authHeader?.match(/^Bearer\s+([^\s]+)$/i);
+  if (authHeader && !bearerMatch) {
     return next(appError.create("Invalid Authorization Format", Fail, 401));
   }
 
-  // 3- Split the string "Bearer <token>" and take only the token part
-  const token = authHeader.split(" ")[1];
+  // Browser sessions use an HttpOnly cookie. Bearer tokens remain supported
+  // for explicitly integrated native/server clients.
+  const token = bearerMatch?.[1] || req.cookies?.accessToken;
+  if (!token) return next(appError.create("Token is required", Fail, 401));
+
   try {
-    // 4- Check if the token is valid using our Secret Key
-    const currentUser = jwt.verify(token, process.env.SECRET_ACCESS_KEY);
+    const decoded = jwt.verify(token, process.env.SECRET_ACCESS_KEY, {
+      algorithms: ["HS256"],
+    });
 
-    // 5- Save user data inside the "request" to use it in the next step
-    req.currentUser = currentUser;
+    if (
+      decoded?.type !== "access" ||
+      !decoded?.id ||
+      !Number.isInteger(decoded.tokenVersion) ||
+      decoded.tokenVersion < 0
+    ) {
+      return next(appError.create("Invalid Token", Fail, 401));
+    }
 
-    // 6- Everything is OK, go to the Controller
+    const user = await User.findById(decoded.id).select("role +tokenVersion");
+    if (!user || (decoded.tokenVersion ?? 0) !== (user.tokenVersion ?? 0)) {
+      return next(appError.create("Invalid Token", Fail, 401));
+    }
+
+    // Use current database role, not a potentially stale role embedded in a JWT.
+    req.currentUser = {
+      id: user._id.toString(),
+      _id: user._id,
+      role: user.role,
+      email: decoded.email,
+      tokenVersion: decoded.tokenVersion,
+    };
     next();
   } catch (error) {
-    // 7- If the token is wrong or expired, return an error
-    return next(appError.create(`Invalid Token  ${error}`, Fail, 401));
+    if (error.name === "TokenExpiredError" || error.name === "JsonWebTokenError") {
+      return next(appError.create("Invalid Token", Fail, 401));
+    }
+    next(error);
   }
 };
 

@@ -1,6 +1,6 @@
 import express from "express";
 import verifyToken from "../middlewares/verifyToken.js";
-import allowedRoles from "../middlewares/allowedRoles.js";
+import { createRateLimit } from "../middlewares/rateLimit.js";
 const notificationRouter = express.Router();
 
 import {
@@ -10,8 +10,15 @@ import {
 } from "../controllers/notificationController.js";
 
 notificationRouter.use(verifyToken);
+const notificationWriteLimiter = createRateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  namespace: "notification-write",
+  store: "mongo",
+  keyGenerator: (req) => `user:${req.currentUser?.id || "unknown"}`,
+});
 notificationRouter.get("/", getNotifications);
-notificationRouter.patch("/readAll", readAll);
-notificationRouter.patch("/:id", markAsRead);
+notificationRouter.patch("/readAll", notificationWriteLimiter, readAll);
+notificationRouter.patch("/:id", notificationWriteLimiter, markAsRead);
 
 export { notificationRouter };

@@ -1,147 +1,95 @@
 import mongoose from "mongoose";
-import User from "../modules/authSchema.js";
-import Product from "../modules/productSchema.js";
-import Order from "../modules/orderSchema.js";
+import User from "../models/authSchema.js";
+import Product from "../models/productSchema.js";
+import Order from "../models/orderSchema.js";
+import Review from "../models/reviewSchema.js";
+import Notification from "../models/notificationSchema.js";
+import OTP from "../models/otpSchema.js";
+import ProductEngagement from "../models/productEngagementSchema.js";
+import SocketTicket from "../models/socketTicketSchema.js";
+import OAuthCode from "../models/oauthCodeSchema.js";
 import Wrapper from "../middlewares/wrapper.js";
 import appError from "../utils/appError.js";
 import { Fail, Success } from "../utils/httpText.js";
 import { USER, MANAGER, ADMIN } from "../utils/role.js";
+import { getPagination } from "../utils/pagination.js";
+import { disconnectUserSockets } from "../utils/socket.js";
 
-// const getAdminStats = Wrapper(async (req, res, next) => {
-//   const [userCount, productCount, orderCount, revenueData] = await Promise.all([
-//     User.countDocuments(),
-//     Product.countDocuments(),
-//     Order.countDocuments(),
-//     Order.aggregate([
-//       { $match: { status: "Delivered" } },
-//       { $group: { _id: null, total: { $sum: "$totalPrice" } } },
-//     ]),
-//   ]);
-
-//   const totalRevenue = revenueData.length > 0 ? revenueData[0].total : 0;
-
-//   res.status(200).json({
-//     status: Success,
-//     data: {
-//       users: userCount,
-//       products: productCount,
-//       orders: orderCount,
-//       revenue: totalRevenue,
-//     },
-//   });
-// });
-
-// Dashboard for Admin
-
-const getDashboardStats = async (req, res) => {
+const getDashboardStats = Wrapper(async (req, res) => {
   const now = new Date();
-
-  // Start date of the current month
   const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-  // Last month start date
   const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-
-  // 1. (Revenue)
-  const [thisMonthRevData, lastMonthRevData] = await Promise.all([
-    Order.aggregate([
-      {
-        $match: { createdAt: { $gte: startOfThisMonth }, status: "Delivered" },
-      },
-      { $group: { _id: null, total: { $sum: "$totalPrice" } } },
-    ]),
-
-    Order.aggregate([
-      {
-        $match: {
-          createdAt: { $gte: startOfLastMonth, $lt: startOfThisMonth },
-          status: "Delivered",
-        },
-      },
-      { $group: { _id: null, total: { $sum: "$totalPrice" } } },
-    ]),
-  ]);
-
-  const currentMonthRevenue = thisMonthRevData[0]?.total || 0;
-  const lastMonthRevenue = lastMonthRevData[0]?.total || 0;
-
-  // 2. (Orders)
-  const currentMonthOrders = await Order.countDocuments({
-    createdAt: { $gte: startOfThisMonth },
-  });
-
-  const pendingOrder = await Order.countDocuments({ status: "Pending" });
-
-  const lastMonthOrders = await Order.countDocuments({
-    createdAt: { $gte: startOfLastMonth, $lt: startOfThisMonth },
-  });
-
-  // 3. (Users)
-  const currentMonthUsers = await User.countDocuments({
-    createdAt: { $gte: startOfThisMonth },
-  });
-
-  const lastMonthUsers = await User.countDocuments({
-    createdAt: { $gte: startOfLastMonth, $lt: startOfThisMonth },
-  });
-
-  // (Total All-time)
-  const totalRevenueData = await Order.aggregate([
-    { $match: { status: "Delivered" } },
-    { $group: { _id: null, total: { $sum: "$totalPrice" } } },
-  ]);
-
-  // 1. (Weekly Sales Data)
-  const sevenDaysAgo = new Date();
+  const sevenDaysAgo = new Date(now);
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
   sevenDaysAgo.setHours(0, 0, 0, 0);
 
-  // 2. (Weekly Sales Data)
-  const rawWeeklySales = await Order.aggregate([
-    {
-      $match: {
-        createdAt: { $gte: sevenDaysAgo },
-        status: "Delivered",
+  const [
+    thisMonthRevenue,
+    lastMonthRevenue,
+    currentMonthOrders,
+    lastMonthOrders,
+    currentMonthUsers,
+    lastMonthUsers,
+    totalRevenue,
+    totalOrders,
+    totalUsers,
+    totalProducts,
+    pendingOrders,
+    rawWeeklySales,
+  ] = await Promise.all([
+    Order.aggregate([
+      { $match: { createdAt: { $gte: startOfThisMonth }, status: "Delivered" } },
+      { $group: { _id: null, total: { $sum: "$totalPrice" } } },
+    ]),
+    Order.aggregate([
+      { $match: { createdAt: { $gte: startOfLastMonth, $lt: startOfThisMonth }, status: "Delivered" } },
+      { $group: { _id: null, total: { $sum: "$totalPrice" } } },
+    ]),
+    Order.countDocuments({ createdAt: { $gte: startOfThisMonth } }),
+    Order.countDocuments({ createdAt: { $gte: startOfLastMonth, $lt: startOfThisMonth } }),
+    User.countDocuments({ createdAt: { $gte: startOfThisMonth } }),
+    User.countDocuments({ createdAt: { $gte: startOfLastMonth, $lt: startOfThisMonth } }),
+    Order.aggregate([
+      { $match: { status: "Delivered" } },
+      { $group: { _id: null, total: { $sum: "$totalPrice" } } },
+    ]),
+    Order.countDocuments(),
+    User.countDocuments(),
+    Product.countDocuments(),
+    Order.countDocuments({ status: "Pending" }),
+    Order.aggregate([
+      { $match: { createdAt: { $gte: sevenDaysAgo }, status: "Delivered" } },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+          revenue: { $sum: "$totalPrice" },
+        },
       },
-    },
-    {
-      $group: {
-        _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
-        revenue: { $sum: "$totalPrice" },
-      },
-    },
-    { $sort: { _id: 1 } },
+      { $sort: { _id: 1 } },
+    ]),
   ]);
 
-  // 3. Zero-Filling
-  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const weeklySales = [];
-
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    const dateKey = d.toISOString().split("T")[0]; //YYYY-MM-DD
-    const dayName = dayNames[d.getDay()];
-
-    const existingData = rawWeeklySales.find((item) => item._id === dateKey);
-
-    weeklySales.push({
-      day: dayName,
-      date: dateKey,
-      revenue: existingData ? existingData.revenue : 0,
-    });
+  for (let index = 6; index >= 0; index -= 1) {
+    const date = new Date(now);
+    date.setDate(date.getDate() - index);
+    const dateKey = date.toISOString().slice(0, 10);
+    const locale = req.locale === "ar" ? "ar-EG" : "en-US";
+    const day = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(date);
+    const existing = rawWeeklySales.find((item) => item._id === dateKey);
+    weeklySales.push({ day, date: dateKey, revenue: existing?.revenue || 0 });
   }
 
-  res.status(200).json({
-    status: "success",
+  return res.status(200).json({
+    status: Success,
     data: {
-      totalRevenue: totalRevenueData[0]?.total || 0,
-      totalOrders: await Order.countDocuments(),
-      totalUsers: await User.countDocuments(),
-      totalProducts: await Product.countDocuments(),
-      pendingOrders: await Order.countDocuments({ status: "Pending" }),
-      currentMonthRevenue,
-      lastMonthRevenue,
+      totalRevenue: totalRevenue[0]?.total || 0,
+      totalOrders,
+      totalUsers,
+      totalProducts,
+      pendingOrders,
+      currentMonthRevenue: thisMonthRevenue[0]?.total || 0,
+      lastMonthRevenue: lastMonthRevenue[0]?.total || 0,
       currentMonthOrders,
       lastMonthOrders,
       currentMonthUsers,
@@ -149,164 +97,186 @@ const getDashboardStats = async (req, res) => {
       weeklySales,
     },
   });
-};
+});
 
-//  User List for Admin
-const users = Wrapper(async (req, res, next) => {
-  // Pagination parameters
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 10;
-  const skip = (page - 1) * limit;
+const users = Wrapper(async (req, res) => {
+  const { page, limit, skip } = getPagination(req.query, { maxLimit: 100 });
+  const keyword = typeof req.query.keyword === "string" ? req.query.keyword.trim().slice(0, 100) : "";
+  if (req.query.keyword !== undefined && typeof req.query.keyword !== "string") {
+    throw appError.create("Invalid keyword value", Fail, 400);
+  }
 
-  const [totalUsers, allUsers] = await Promise.all([
-    User.countDocuments(),
-    User.find({}, "-password")
-      .sort({ createdAt: -1 })
+  const conditions = [];
+  if (keyword) {
+    const safeKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    conditions.push({
+      $or: [
+        { fullName: { $regex: safeKeyword, $options: "i" } },
+        { email: { $regex: safeKeyword, $options: "i" } },
+      ],
+    });
+  }
+
+  const role = typeof req.query.role === "string" ? req.query.role : "all";
+  if (!["all", "admin", "manager", "user"].includes(role)) {
+    throw appError.create("Invalid role filter", Fail, 400);
+  }
+  if (role === "admin") conditions.push({ role: ADMIN });
+  if (role === "manager") conditions.push({ role: { $in: [MANAGER, "MANGER"] } });
+  if (role === "user") conditions.push({ role: { $nin: [ADMIN, MANAGER, "MANGER"] } });
+  const filter = conditions.length ? { $and: conditions } : {};
+
+  const sortOptions = {
+    newest: { createdAt: -1, _id: -1 },
+    oldest: { createdAt: 1, _id: 1 },
+    "name-asc": { fullName: 1, _id: 1 },
+  };
+  const sortKey = typeof req.query.sort === "string" && req.query.sort ? req.query.sort : "newest";
+  if (!Object.hasOwn(sortOptions, sortKey)) {
+    throw appError.create("Invalid sort value", Fail, 400);
+  }
+
+  const now = new Date();
+  const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const [totalUsers, allUsers, roleRows, joinedThisMonth, allUsersCount] = await Promise.all([
+    User.countDocuments(filter),
+    User.find(filter)
+      .select("-password -token -refreshTokenHash -tokenVersion -otpDailyCount -lastOtpRequest")
+      .sort(sortOptions[sortKey])
       .skip(skip)
       .limit(limit)
       .lean({ virtuals: true }),
+    User.aggregate([{ $group: { _id: { $toUpper: { $ifNull: ["$role", USER] } }, total: { $sum: 1 } } }]),
+    User.countDocuments({ createdAt: { $gte: startOfThisMonth } }),
+    User.countDocuments(),
   ]);
 
-  res.status(200).json({
+  const roleCounts = Object.fromEntries(roleRows.map((row) => [row._id, row.total]));
+  const admins = roleCounts[ADMIN] || 0;
+  const managers = (roleCounts[MANAGER] || 0) + (roleCounts.MANGER || 0);
+  const customers = Math.max(0, allUsersCount - admins - managers);
+
+  return res.status(200).json({
     status: Success,
     results: allUsers.length,
-    pagination: {
-      total: totalUsers,
-      totalPages: Math.ceil(totalUsers / limit),
-      currentPage: page,
-      limit,
-    },
+    pagination: { total: totalUsers, totalPages: Math.ceil(totalUsers / limit), currentPage: page, limit },
+    summary: { admins, managers, customers, joinedThisMonth, total: allUsersCount },
     data: { users: allUsers },
   });
 });
 
-// Get User Details for Admin
-
 const getUser = Wrapper(async (req, res, next) => {
-  const { userId } = req.params; // Destructuring userId from req.params
-
-  // 1. Validate userId format
-  if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+  const { userId } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
     return next(appError.create("Invalid user ID format", Fail, 400));
   }
 
-  // 2. get user details along with their orders and reviews (if any)
-  const user = await User.findById(userId, "-password")
-    .populate({
-      path: "orders",
-      select: "totalPrice status createdAt", // get only essential order fields
-      options: { sort: { createdAt: -1 } }, // sort orders by most recent
-    })
+  const user = await User.findById(userId)
+    .select("-password -token -refreshTokenHash -tokenVersion -otpDailyCount -lastOtpRequest")
+    .populate({ path: "orders", select: "totalPrice status createdAt", options: { sort: { createdAt: -1 }, limit: 50 } })
     .populate({
       path: "reviews",
-      select: "rating comment product",
-      populate: { path: "product", select: "name" },
+      select: "rating comment product createdAt",
+      options: { sort: { createdAt: -1 }, limit: 50 },
+      populate: { path: "product", select: "name nameAr nameEn" },
     })
     .lean({ virtuals: true });
+  if (!user) return next(appError.create("User not found", Fail, 404));
 
-  if (!user) {
-    return next(appError.create("User was not found", Fail, 404));
+  user.memberSince = user.createdAt || new mongoose.Types.ObjectId(userId).getTimestamp();
+  if (req.locale === "ar") {
+    user.reviews = (user.reviews || []).map((review) => ({
+      ...review,
+      product: review.product
+        ? { ...review.product, name: review.product.nameAr || review.product.name || review.product.nameEn }
+        : review.product,
+    }));
   }
 
-  // 3. Adding memberSince field based on ObjectId timestamp
-
-  user.memberSince = new mongoose.Types.ObjectId(userId).getTimestamp();
-
-  res.status(200).json({
-    status: Success,
-    data: { user },
-  });
+  return res.status(200).json({ status: Success, data: { user } });
 });
-
-// Delete User (Admin Only) - Optional, not implemented in routes yet
 
 const deleteUser = Wrapper(async (req, res, next) => {
   const { userId } = req.params;
-  const currentUser = (req.currentUser?._id || req.currentUser?.id)?.toString();
-
-  // Validate userId format
-  if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+  const currentUserId = (req.currentUser?.id || req.currentUser?._id)?.toString();
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
     return next(appError.create("Invalid user ID format", Fail, 400));
   }
+  if (currentUserId === userId.toString()) {
+    return next(appError.create("Forbidden: You cannot delete your own admin account", Fail, 403));
+  }
 
-  if (currentUser === userId.toString()) {
-    appError.create(
-      "Forbidden: You cannot delete your own admin account",
-      Fail,
-      403,
+  const deletedUser = await User.findByIdAndDelete(userId);
+  if (!deletedUser) return next(appError.create("User not found", Fail, 404));
+  disconnectUserSockets(deletedUser._id);
+
+  // Pending orders would otherwise keep their stock reserved forever with nobody to
+  // fulfil them. Shipped/delivered orders stay as financial records.
+  const pendingOrders = await Order.find({ user: userId, status: "Pending" }).select("orderItems").lean();
+  for (const order of pendingOrders) {
+    const claimed = await Order.findOneAndUpdate(
+      { _id: order._id, status: "Pending" },
+      {
+        $set: { status: "Cancelled" },
+        $push: { statusHistory: { status: "Cancelled", changedAt: new Date(), changedBy: currentUserId } },
+      },
+    ).select("_id");
+    if (!claimed) continue;
+    await Product.bulkWrite(
+      order.orderItems.map((item) => ({
+        updateOne: { filter: { _id: item.product }, update: { $inc: { countInStock: item.quantity } } },
+      })),
+      { ordered: false },
     );
   }
-  const deletedUser = await User.findByIdAndDelete(userId);
 
-  if (!deletedUser) {
-    return next(appError.create("User not found", Fail, 404));
-  }
+  const userReviews = await Review.find({ user: userId }).select("product").lean();
+  const affectedProductIds = [...new Set(userReviews.map((review) => review.product.toString()))];
+  await Promise.all([
+    Review.deleteMany({ user: userId }),
+    Notification.deleteMany({ $or: [{ user: userId }, { recipient: userId }] }),
+    OTP.deleteMany({ email: deletedUser.email }),
+    ProductEngagement.deleteMany({ user: userId }),
+    SocketTicket.deleteMany({ user: userId }),
+    OAuthCode.deleteMany({ user: userId }),
+  ]);
+  await Promise.all(affectedProductIds.map((productId) => Review.calcAverageRatings(productId)));
 
-  res.status(200).json({
-    status: Success,
-    message: "User deleted successfully",
-    data: null,
-  });
+  return res.status(200).json({ status: Success, message: "User deleted successfully", data: null });
 });
 
-// Update User Role (Admin Only)
 const UpdateUserRole = Wrapper(async (req, res, next) => {
-  const userId = req.params.userId;
-  const currentUserId = (
-    req.currentUser?._id || req.currentUser?.id
-  )?.toString();
+  const { userId } = req.params;
+  const currentUserId = (req.currentUser?.id || req.currentUser?._id)?.toString();
+  const role = typeof req.body.role === "string" ? req.body.role.trim().toUpperCase() : null;
 
-  const role = req.body.role ? req.body.role.toUpperCase() : null;
-
-  if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
     return next(appError.create("Invalid user ID format", Fail, 400));
   }
-
-  //  Validate role value
-  const allowedRoles = [ADMIN, MANAGER, USER];
-  if (!role || !allowedRoles.includes(role)) {
+  if (![ADMIN, MANAGER, USER].includes(role)) {
     return next(appError.create("Invalid role value", Fail, 400));
   }
-
-  // check if the manager is trying to update their own role
   if (userId.toString() === currentUserId) {
-    return next(
-      appError.create(
-        "Managers/Admins cannot update their own role",
-        Fail,
-        400,
-      ),
-    );
+    return next(appError.create("Managers/Admins cannot update their own role", Fail, 400));
   }
 
-  const targetUser = await User.findById(userId).select("-password");
-  if (!targetUser) {
-    return next(appError.create("User was not found", Fail, 404));
-  }
-
-  // Prevent non-admins from modifying admin accounts
+  const targetUser = await User.findById(userId).select("+tokenVersion +refreshTokenHash");
+  if (!targetUser) return next(appError.create("User not found", Fail, 404));
   if (targetUser.role === ADMIN && req.currentUser?.role !== ADMIN) {
-    return next(
-      appError.create("Only Admins can modify Admin accounts", Fail, 403),
-    );
+    return next(appError.create("Only Admins can modify Admin accounts", Fail, 403));
   }
 
-  // Update the user's role
   targetUser.role = role;
-  await targetUser.save();
+  targetUser.tokenVersion = (targetUser.tokenVersion || 0) + 1;
+  targetUser.refreshTokenHash = null;
+  await targetUser.save({ validateBeforeSave: true });
+  disconnectUserSockets(targetUser._id);
 
-  res.status(200).json({
+  return res.status(200).json({
     status: Success,
     message: "User role updated successfully",
     data: { user: targetUser },
   });
 });
 
-export {
-  // getAdminStats,
-  users,
-  UpdateUserRole,
-  getUser,
-  deleteUser,
-  getDashboardStats,
-};
+export { users, UpdateUserRole, getUser, deleteUser, getDashboardStats };

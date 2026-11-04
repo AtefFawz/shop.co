@@ -1,20 +1,12 @@
-// SOCKET CONNECTION
+import { ADMIN, MANAGER } from "../utils/role.js";
 
-import { ADMIN } from "../utils/role.js";
-function socketConnection(io) {
-  // io.on("connection", (socket) => {
-  console.log(ADMIN);
-  // Check is admin
+const socketConnection = (io) => {
   io.on("connection", (socket) => {
-    if (socket.role === ADMIN) {
-      socket.join("admin");
-    } else {
-      socket.join(`user:${socket.userId}`);
-    }
-
-    socket.on("disconnect", () => {
-      console.log(`User disconnect: ${socket.userId}`);
-    });
+    // Every account gets a private room so logout, password reset, and role
+    // changes can revoke active sockets (including administrators).
+    socket.join(`user:${socket.userId}`);
+    if (socket.role === ADMIN || socket.role === MANAGER) socket.join("admin");
   });
-}
+};
+
 export { socketConnection };

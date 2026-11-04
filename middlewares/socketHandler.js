@@ -1,25 +1,36 @@
-import jwt from "jsonwebtoken";
-const socketHandler = (socket, next) => {
-  const token = socket.handshake.auth?.token;
+import crypto from "node:crypto";
+import SocketTicket from "../models/socketTicketSchema.js";
+import User from "../models/authSchema.js";
 
-  if (!token) {
-    return next(new Error("NO_TOKEN"));
+const hashTicket = (value) =>
+  crypto.createHash("sha256").update(value).digest("hex");
+
+const socketHandler = async (socket, next) => {
+  const ticket = socket.handshake.auth?.ticket;
+  if (typeof ticket !== "string" || !/^[A-Za-z0-9_-]{40,60}$/.test(ticket)) {
+    return next(new Error("NO_TICKET"));
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.SECRET_ACCESS_KEY);
-    socket.userId = decoded.id;
-    socket.role = decoded.role;
+    // One-time, 60-second tickets prevent the browser from exposing reusable API JWTs.
+    const record = await SocketTicket.findOneAndDelete({
+      tokenHash: hashTicket(ticket),
+      expiresAt: { $gt: new Date() },
+    }).select("user tokenVersion");
 
-    next();
-  } catch (error) {
-    console.log("Socket JWT Error:", error.name);
+    if (!record) return next(new Error("INVALID_TICKET"));
 
-    if (error.name === "TokenExpiredError") {
-      return next(new Error("ACCESS_TOKEN_EXPIRED"));
+    const user = await User.findById(record.user).select("role +tokenVersion");
+    if (!user || (user.tokenVersion ?? 0) !== record.tokenVersion) {
+      return next(new Error("INVALID_TICKET"));
     }
 
-    return next(new Error("INVALID_TOKEN"));
+    socket.userId = user._id.toString();
+    socket.role = user.role;
+    return next();
+  } catch {
+    return next(new Error("SOCKET_AUTH_UNAVAILABLE"));
   }
 };
+
 export { socketHandler };

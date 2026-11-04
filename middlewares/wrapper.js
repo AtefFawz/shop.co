@@ -1,7 +1,5 @@
-export default (fun) => {
-  return (req, res, next) => {
-    fun(req, res, next).catch((error) => {
-      next(error);
-    });
-  };
+export default (handler) => (req, res, next) => {
+  Promise.resolve()
+    .then(() => handler(req, res, next))
+    .catch(next);
 };

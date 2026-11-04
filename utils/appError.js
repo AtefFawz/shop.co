@@ -1,12 +1,16 @@
-class appError extends Error {
-  constructor() {
-    super();
-  }
-  create(errorText, statusText, statusCode) {
+class AppError extends Error {
+  constructor(errorText, statusText = "error", statusCode = 500) {
+    super(errorText);
+    this.name = "AppError";
     this.errorText = errorText;
     this.statusText = statusText;
     this.statusCode = statusCode;
-    return this;
+    Error.captureStackTrace?.(this, this.constructor);
+  }
+
+  create(errorText, statusText, statusCode) {
+    return new AppError(errorText, statusText, statusCode);
   }
 }
-export default new appError();
+
+export default new AppError();

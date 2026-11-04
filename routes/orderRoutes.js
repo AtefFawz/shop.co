@@ -3,27 +3,46 @@ const orderRouter = express.Router();
 import {
   createOrder,
   getOrders,
-  //   getOrder,
   updateOrderStatus,
   deleteOrder,
   getOrderById,
+  getOrderInvoice,
+  getReorderItems,
 } from "../controllers/orderController.js";
 
 import verifyToken from "../middlewares/verifyToken.js";
 import allowedRoles from "../middlewares/allowedRoles.js";
-import { ADMIN } from "../utils/role.js";
+import { createRateLimit } from "../middlewares/rateLimit.js";
+import { ADMIN, MANAGER } from "../utils/role.js";
 
 orderRouter.use(verifyToken);
 
-orderRouter.get("/all", allowedRoles(ADMIN), getOrders);
+const orderMutationLimiter = createRateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  namespace: "order-mutation",
+  store: "mongo",
+  keyGenerator: (req) => `user:${req.currentUser?.id || "unknown"}`,
+});
+
+const createOrderLimiter = createRateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  namespace: "order-create",
+  store: "mongo",
+  keyGenerator: (req) => `user:${req.currentUser?.id || req.ip || "unknown"}`,
+});
+
+orderRouter.get("/all", allowedRoles(ADMIN, MANAGER), getOrders);
+orderRouter.get("/:id/invoice", getOrderInvoice);
+orderRouter.get("/:id/reorder", getReorderItems);
 
 orderRouter
   .route("/:id")
   .get(getOrderById)
-  .patch(allowedRoles(ADMIN), updateOrderStatus)
-  .delete(deleteOrder);
+  .patch(allowedRoles(ADMIN, MANAGER), orderMutationLimiter, updateOrderStatus)
+  .delete(orderMutationLimiter, deleteOrder);
 
-orderRouter.route("/").post(createOrder);
-// .get(getOrder);
+orderRouter.route("/").post(createOrderLimiter, createOrder);
 
 export { orderRouter };
