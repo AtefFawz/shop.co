@@ -1,0 +1,9 @@
+const ROLES = {
+  USER: "USER",
+  ADMIN: "ADMIN",
+  MANAGER: "MANAGER",
+};
+const ADMIN = ROLES.ADMIN;
+const USER = ROLES.USER;
+const MANAGER = ROLES.MANAGER;
+export { ADMIN, USER, MANAGER };

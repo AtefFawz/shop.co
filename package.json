@@ -1,0 +1,46 @@
+{
+  "name": "shop.co",
+  "version": "1.1.0",
+  "description": "Bilingual Shop.co e-commerce REST API",
+  "main": "shop_app.js",
+  "scripts": {
+    "start": "node shop_app.js",
+    "dev": "nodemon shop_app.js",
+    "test": "node --test",
+    "db:backfill-products": "node scripts/backfill-product-indexes.js",
+    "db:features-indexes": "node scripts/create-feature-indexes.js"
+  },
+  "keywords": [
+    "shop.co",
+    "ecommerce",
+    "express",
+    "mongodb",
+    "api"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "nodemon": "^1.0.2"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cloudinary": "^2.7.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^5.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.11.4",
+    "multer": "^2.5.0",
+    "nodemailer": "^10.0.16",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
+    "serverless-http": "^4.0.0",
+    "socket.io": "^4.8.4",
+    "validator": "^13.15.26"
+  },
+  "engines": {
+    "node": ">=22.23.5"
+  }
+}
