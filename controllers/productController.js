@@ -19,6 +19,7 @@ import {
 import { buildVariantIndexFields, colorFamily, normalizeSizeValue, getColorAliases, getSizeAliases } from "../services/variantIndexService.js";
 import { notifyPriceDrops } from "../services/priceAlertService.js";
 import ProductEngagement from "../models/productEngagementSchema.js";
+import parseStringList from "../utils/parseStringList.js";
 
 const parseBoolean = (value, fieldName) => {
   if (value === true || value === "true" || value === 1 || value === "1") return true;
@@ -26,33 +27,7 @@ const parseBoolean = (value, fieldName) => {
   throw appError.create(`${fieldName} must be true or false`, Fail, 400);
 };
 
-const parseList = (value, fieldName) => {
-  if (value === undefined || value === null || value === "") return [];
-  let values;
-  if (Array.isArray(value)) {
-    values = value;
-  } else if (typeof value === "string") {
-    const trimmed = value.trim();
-    if (!trimmed) return [];
-    if (trimmed.startsWith("[")) {
-      try {
-        values = JSON.parse(trimmed);
-      } catch {
-        throw appError.create(`Invalid ${fieldName} format`, Fail, 400);
-      }
-      if (!Array.isArray(values)) throw appError.create(`Invalid ${fieldName} format`, Fail, 400);
-    } else {
-      values = trimmed.split(",");
-    }
-  } else {
-    throw appError.create(`${fieldName} must be an array or comma-separated string`, Fail, 400);
-  }
-
-  if (values.length > 20 || values.some((item) => typeof item !== "string" || item.trim().length > 100)) {
-    throw appError.create(`Invalid ${fieldName} format`, Fail, 400);
-  }
-  return [...new Set(values.map((item) => item.trim()).filter(Boolean))];
-};
+const parseList = (value, fieldName) => parseStringList(value, fieldName);
 
 const readText = (value, fieldName, maxLength) => {
   if (value === undefined || value === null) return "";
@@ -468,9 +443,17 @@ const updateProduct = Wrapper(async (req, res, next) => {
   ])];
   let preservedImages = [];
   if (req.body.existingImages !== undefined) {
-    // Only allow preserving image URLs that already belong to this product.
-    preservedImages = parseList(req.body.existingImages, "existingImages")
-      .filter((image) => previousImages.includes(image));
+    // Cloudinary URLs can exceed the 100-character limit used by variant lists.
+    // Keep the image list tightly bounded and only accept URLs already attached
+    // to this product; never let a client nominate an arbitrary Cloudinary asset.
+    preservedImages = parseStringList(req.body.existingImages, "existingImages", {
+      maxItems: 4,
+      maxItemLength: 2048,
+    });
+
+    if (preservedImages.some((image) => !previousImages.includes(image))) {
+      return next(appError.create("Invalid existing image selection", Fail, 400));
+    }
   }
   const newUploadedImages = (req.files || []).map((file) => file.path).filter(Boolean);
   if (req.body.existingImages !== undefined || newUploadedImages.length > 0) {

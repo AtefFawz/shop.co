@@ -1,82 +1,49 @@
-# Frontend integration contract
+# Frontend integration
 
-The backend is ready for the catalog and order UI changes below. Keep the API calls server-driven; do not download the full product catalog and filter it in the browser.
+This document describes the browser-facing conventions the Shop.co frontend should follow.
 
-## Google sign-in callback (updated security flow)
+## Base URL and cookies
 
-Google now redirects to the frontend with a short-lived, single-use `code`, not an access token:
+Set one environment variable in the frontend for the API origin, for example `NEXT_PUBLIC_API_URL=http://localhost:4000` during local development. Keep production API and frontend origins on HTTPS.
 
-```text
-/auth/success?code=ONE_TIME_CODE
-```
-
-The success page should immediately read the code and remove it from the address bar before loading analytics or other third-party scripts. Then exchange it once:
+Browser API calls must include cookies:
 
 ```ts
-const url = new URL(window.location.href);
-const code = url.searchParams.get("code");
-window.history.replaceState({}, "", "/auth/success");
-
-if (code) {
-  const response = await fetch(`${API_URL}/api/auth/google/exchange`, {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json", "X-Locale": locale },
-    body: JSON.stringify({ code }),
-  });
-  const result = await response.json();
-  if (!response.ok) throw new Error(result.message || "Google sign-in failed");
-  // Keep result.data.token as the short-lived access token using the app's existing auth state.
-  // The refresh token is an HTTP-only cookie and must never be read by client JavaScript.
-}
+const response = await fetch(`${API_URL}/api/profile/me`, {
+  credentials: "include",
+  headers: { "X-Locale": locale },
+});
 ```
 
-Authorization codes expire after 60 seconds and can be exchanged only once. The backend also validates a one-time OAuth `state` value bound to an HTTP-only, short-lived cookie.
+With Axios, configure `withCredentials: true`. Do not attempt to read the access or refresh tokens from JavaScript; both are HttpOnly cookies. Protected endpoints can also accept a Bearer access token for integrations that already have one.
 
-## Catalog query
+For unsafe browser requests, send the exact frontend `Origin` implicitly through the browser and configure that origin in backend `CLIENT_URL` / `CORS_ORIGINS`. Do not use wildcard credentialed CORS.
+
+## Product catalogue
+
+Use the server for filtering and pagination; do not download the full product collection and filter it in the browser.
 
 ```ts
-export type CatalogQuery = {
+type CatalogQuery = {
   keyword?: string;
   gender?: string[];
   section?: string[];
   style?: string[];
   category?: string[];
-  minPrice?: number;
-  maxPrice?: number;
   color?: string[];
   size?: string[];
-  sort?:
-    | "newest"
-    | "oldest"
-    | "price_asc"
-    | "price_desc"
-    | "rating"
-    | "popular"
-    | "name_asc"
-    | "name_desc";
+  minPrice?: number;
+  maxPrice?: number;
+  sort?: "newest" | "oldest" | "price_asc" | "price_desc" |
+    "rating" | "popular" | "name_asc" | "name_desc";
   page?: number;
   limit?: number;
   isSale?: boolean;
   inStock?: boolean;
 };
-
-export type CatalogResponse<TProduct> = {
-  status: string;
-  results: number;
-  pagination: {
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-    hasNextPage: boolean;
-    hasPreviousPage: boolean;
-  };
-  data: { Products: TProduct[] };
-};
 ```
 
-Build the URL parameters from the current UI state:
+Example:
 
 ```ts
 const params = new URLSearchParams();
@@ -84,36 +51,48 @@ if (keyword.trim()) params.set("keyword", keyword.trim());
 if (filters.gender.length) params.set("gender", filters.gender.join(","));
 if (filters.section.length) params.set("section", filters.section.join(","));
 if (filters.style.length) params.set("style", filters.style.join(","));
-if (filters.maxPrice != null) params.set("maxPrice", String(filters.maxPrice));
+if (filters.category.length) params.set("category", filters.category.join(","));
 if (filters.color.length) params.set("color", filters.color.join(","));
 if (filters.size.length) params.set("size", filters.size.join(","));
+if (filters.minPrice != null) params.set("minPrice", String(filters.minPrice));
+if (filters.maxPrice != null) params.set("maxPrice", String(filters.maxPrice));
 params.set("sort", sort);
 params.set("page", String(page));
 params.set("limit", "12");
 
-const response = await fetch(`${API_URL}/api/product?${params.toString()}`, {
-  headers: {
-    Authorization: `Bearer ${accessToken}`,
-    "X-Locale": locale, // "ar" or "en"
-  },
+const response = await fetch(`${API_URL}/api/product?${params}`, {
+  credentials: "include",
+  headers: { "X-Locale": locale },
   signal: abortController.signal,
 });
 ```
 
-Debounce the search term by 250–350 ms, cancel the previous request with `AbortController`, and reset page to `1` whenever the keyword, filters, or sort changes. Render pagination from the API's `pagination` object. A one-character keyword is supported, but naturally can produce many matches. Keep search terms within the API limit of 120 characters and 16 distinct terms.
+Debounce search by roughly 250–350 ms, cancel stale requests, and reset page to `1` when the query, filters, or sort changes. Use `pagination` from the response rather than paginating only the currently loaded products. Search accepts up to 120 characters and 16 distinct terms; a one-character search is supported but may return many matches.
 
-## Order creation
+Product list responses use `ratingsAverage` and `ratingsQuantity`; they do not populate full review documents. Load reviews from `GET /api/review?product=<productId>&page=1&limit=10` when needed.
+
+## Product image editing
+
+The product create/update endpoints accept multipart form data. New files use the `images` field (maximum four files; each file maximum 5 MB). When editing, send retained product image URLs in `existingImages` as a JSON array string, e.g.:
 
 ```ts
-export type CreateOrderItem = {
-  productId: string;
-  quantity: number;
-  size?: string;
-  color?: string;
-};
+formData.append("existingImages", JSON.stringify(existingImageUrls));
+```
 
-export type CreateOrderRequest = {
-  orderItems: CreateOrderItem[];
+Only URLs that are already attached to that same product can be retained. The server validates them against the existing product record; arbitrary Cloudinary URLs are rejected. The maximum retained list is four images, with up to 2048 characters per URL.
+
+## Orders and checkout
+
+Keep the selected size and color on each cart line and send them with the order. Do not send a client-calculated price as authoritative data; the API reloads the products and calculates the current price/discount and total.
+
+```ts
+type CreateOrderRequest = {
+  orderItems: Array<{
+    productId: string;
+    quantity: number;
+    size?: string;
+    color?: string;
+  }>;
   shippingAddress: {
     address: string;
     city: string;
@@ -123,29 +102,55 @@ export type CreateOrderRequest = {
 };
 ```
 
-Preserve the selected size and color on each cart line and send them when the customer submits the order. Values must match the corresponding product's configured `size` and `colors` options. They are optional for compatibility with older clients. Do not send a client-calculated `price` as an authoritative value; the API recalculates line prices and order total from MongoDB.
+Use a unique `Idempotency-Key` value for a checkout submission and reuse that same value only when retrying the same logical order. Cash on delivery is the supported default. Card payment is not integrated in this backend yet.
 
-Stock is currently shared at the product level. If inventory must eventually differ by size/color, the next data-model step is a `variants[]` collection with a stable variant identifier, SKU, per-variant stock, and optional price override. That requires a deliberate cart and inventory migration, so it is not silently introduced in this backend revision.
+Stock is shared at the product level, not independently by variant. The order response contains the server-calculated line `price` and `totalPrice`; use those values in order details and receipts.
 
-## Customer engagement features (V6 feature layer)
+## Google sign-in
 
-All routes below use the existing HttpOnly-cookie session (or supported bearer token). Product IDs are Mongo ObjectIds.
+Google OAuth redirects back to `/auth/success` with a short-lived `code` and a `state` value. Read both parameters, remove them from the address bar before loading analytics or third-party scripts, then exchange them immediately:
 
-| Method | Route | Purpose |
-| --- | --- | --- |
-| GET | `/api/features/me?type=saved\|recent\|price-alert` | Read the signed-in customer's saved-for-later list, recent views, or price alerts |
-| POST / DELETE | `/api/features/saved/:productId` | Save or remove a product for later (idempotent upsert) |
-| POST | `/api/features/recent/:productId` | Record a signed-in customer's recent product view; server retains the newest 30 |
-| POST / DELETE | `/api/features/price-alerts/:productId` | Set `{ "targetPrice": 1200 }` or remove the alert |
-| GET | `/api/features/recommendations` | Public recommendations; signed-in customers receive category-aware results based on recent/saved items and non-cancelled orders |
-| GET | `/api/features/admin/insights` | Admin/manager engagement counts and top saved products |
-| GET | `/api/order/:id/invoice` | Owner/admin-authorized invoice data for print-to-PDF |
+```ts
+const url = new URL(window.location.href);
+const code = url.searchParams.get("code");
+const state = url.searchParams.get("state");
+window.history.replaceState({}, "", "/auth/success");
 
-Price alerts are evaluated when an administrator updates a product price and when a customer creates an alert. A notification is persisted and emitted through the existing user Socket.IO room. This is an in-app alert; no email/SMS provider is configured by this feature.
+if (code && state) {
+  const response = await fetch(`${API_URL}/api/auth/google/exchange`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Locale": locale,
+    },
+    body: JSON.stringify({ code, state }),
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.message || "Google sign-in failed");
+  // The backend sets HttpOnly session cookies and returns the safe user object.
+}
+```
 
-Orders now append a `statusHistory` event on each accepted status transition. Existing orders without historical events remain readable and are not backfilled with fabricated timestamps. The invoice endpoint returns a server-calculated snapshot using stored order line prices and totals; the frontend print view can be saved as PDF by the browser.
+The code is single-use and expires after 60 seconds. The `state` value is bound to an HttpOnly cookie; do not drop it from the exchange request or persist it for later use.
 
-Comparison is intentionally a local, persisted client-side utility (maximum four products) because it does not require account data or server writes. The size guide only displays the sizes configured on the product. It does not invent centimeter measurements when the catalog has no measurement data.
+## Socket.IO
 
+Do not pass an access or refresh token in a URL/query string. First request a one-time ticket:
 
-Production deployment note: Mongoose `autoIndex` is disabled in production. After deploying the new backend, run `npm run db:features-indexes` once to create the `ProductEngagement` unique and lookup indexes. The command is safe to re-run.
+```ts
+const response = await fetch(`${API_URL}/api/auth/socket-ticket`, {
+  method: "POST",
+  credentials: "include",
+  headers: { "X-Locale": locale },
+});
+const result = await response.json();
+if (!response.ok) throw new Error(result.message || "Could not create socket ticket");
+
+const socket = io(API_URL, {
+  transports: ["websocket", "polling"],
+  auth: { ticket: result.data.ticket },
+});
+```
+
+Tickets expire after 60 seconds and can be used once. Request a new ticket when reconnecting after the old one has been consumed or expired.
